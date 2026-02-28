@@ -17,6 +17,12 @@ export default function TabLayout() {
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
+           <NativeTabs.Trigger name="math">
+            <Label>ተወሳኺ</Label>
+            <Icon sf={"paperplane.fill"} 
+            drawable="ic_menu_manage" />
+          </NativeTabs.Trigger>
+
           <NativeTabs.Trigger name="settings">
             <Label>ተወሳኺ</Label>
             <Icon sf={"paperplane.fill"} 
