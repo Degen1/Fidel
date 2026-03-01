@@ -5,26 +5,28 @@ export default function TabLayout() {
 
   return (
     <NativeTabs>
-          <NativeTabs.Trigger name="index">
-            <Label>ደጀን</Label>
+          <NativeTabs.Trigger name="letters">
+            <Label>ፊደል</Label>
             <Icon sf={"house.fill"} 
             drawable="ic_menu_mylocation" />
           </NativeTabs.Trigger>
 
-          <NativeTabs.Trigger name="explore">
-            <Label>ተወሳኺ</Label>
+          
+
+           <NativeTabs.Trigger name="numbers">
+            <Label>ቁጽሪ</Label>
             <Icon sf={"paperplane.fill"} 
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
-           <NativeTabs.Trigger name="math">
-            <Label>ተወሳኺ</Label>
+          <NativeTabs.Trigger name="colors">
+            <Label>ሕብሪ</Label>
             <Icon sf={"paperplane.fill"} 
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
           <NativeTabs.Trigger name="settings">
-            <Label>ተወሳኺ</Label>
+            <Label>መማረጺ</Label>
             <Icon sf={"paperplane.fill"} 
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
