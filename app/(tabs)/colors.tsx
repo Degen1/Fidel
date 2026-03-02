@@ -1,25 +1,62 @@
-import { useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import { View, Text, Pressable, StyleSheet, PanResponder } from "react-native";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const COLORS = [
-  { label: "Red", value: "#EF4444" },
-  { label: "Blue", value: "#3B82F6" },
-  { label: "Green", value: "#22C55E" },
-  { label: "Orange", value: "#F97316" },
-  { label: "Purple", value: "#A855F7" },
-  { label: "Teal", value: "#14B8A6" },
-  { label: "Yellow", value: "#EAB308" },
+ 
+  { label: "ሰማያዊ", value: "#3B82F6" },
+  { label: "ቀይሕ", value: "#EF4444" },
+  { label: "ቀጠልያ", value: "#22C55E" },
+  { label: "ኣራንሺ", value: "#F97316" },
+  { label: "ጸሊም", value: "#000000" },
+  { label: "ግራጫ", value: "#9CA3AF" },
+  { label: "ብጫ", value: "#EAB308" },
+  { label: "ጻዕዳ", value: "#FFFFFF" },
+
+
 ];
+const SWIPE_UP_THRESHOLD = -40;
+const SWIPE_DOWN_THRESHOLD = 40;
+const LIGHT_COLORS = {
+  screenBg: "#F3F4F6",
+  columnBg: "#E5E7EB",
+  titleText: "#111827",
+  hintText: "#4B5563",
+  activeBorder: "#0F172A",
+};
+const DARK_COLORS = {
+  screenBg: "#111827",
+  columnBg: "#1F2937",
+  titleText: "#F9FAFB",
+  hintText: "#9CA3AF",
+  activeBorder: "#F9FAFB",
+};
 
 export default function ColorsScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const colorScheme = useColorScheme();
+  const themeColors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < SWIPE_UP_THRESHOLD) {
+          setActiveIndex((current) => (current + 1) % COLORS.length);
+        } else if (gestureState.dy > SWIPE_DOWN_THRESHOLD) {
+          setActiveIndex((current) => (current - 1 + COLORS.length) % COLORS.length);
+        }
+      },
+    }),
+  ).current;
 
   const activeColor = COLORS[activeIndex];
   const activeLabel = useMemo(() => activeColor.label, [activeColor]);
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.leftColumn}>
+    <View style={[styles.screen, { backgroundColor: themeColors.screenBg }]} {...panResponder.panHandlers}>
+      <View style={[styles.leftColumn, { backgroundColor: themeColors.columnBg }]}>
         {COLORS.map((color, index) => {
           const isActive = index === activeIndex;
 
@@ -31,6 +68,7 @@ export default function ColorsScreen() {
                 styles.colorItem,
                 { backgroundColor: color.value },
                 isActive && styles.colorItemActive,
+                isActive && { borderColor: themeColors.activeBorder },
               ]}
             >
               {isActive ? <Text style={styles.activeCheck}>✓</Text> : null}
@@ -40,9 +78,9 @@ export default function ColorsScreen() {
       </View>
 
       <View style={styles.mainArea}>
-        <Text style={styles.title}>Colors</Text>
+        <Text style={[styles.title, { color: themeColors.titleText }]}>{activeLabel}</Text>
         <View style={[styles.previewCircle, { backgroundColor: activeColor.value }]} />
-        <Text style={styles.previewLabel}>{activeLabel}</Text>
+        <Text style={[styles.hint, { color: themeColors.hintText }]}>ንላዕሊ ድፍኡ</Text>
       </View>
     </View>
   );
@@ -52,14 +90,12 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     flexDirection: "row",
-    backgroundColor: "#F3F4F6",
   },
   leftColumn: {
     width: 90,
     paddingTop: 64,
     paddingBottom: 24,
     alignItems: "center",
-    backgroundColor: "#E5E7EB",
   },
   colorItem: {
     width: 54,
@@ -88,7 +124,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 34,
-    color: "#111827",
     fontWeight: "700",
     marginBottom: 20,
   },
@@ -97,10 +132,9 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
   },
-  previewLabel: {
-    marginTop: 16,
-    fontSize: 28,
-    color: "#111827",
-    fontWeight: "700",
+  hint: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

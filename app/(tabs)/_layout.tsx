@@ -7,21 +7,20 @@ export default function TabLayout() {
     <NativeTabs>
           <NativeTabs.Trigger name="letters">
             <Label>ፊደል</Label>
-            <Icon sf={"house.fill"} 
-            drawable="ic_menu_mylocation" />
+            <Icon src={require('../../assets/images/tab-letter-fi.png')} />
           </NativeTabs.Trigger>
 
           
 
            <NativeTabs.Trigger name="numbers">
             <Label>ቁጽሪ</Label>
-            <Icon sf={"paperplane.fill"} 
+            <Icon sf={"3.circle.fill"} 
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
           <NativeTabs.Trigger name="colors">
             <Label>ሕብሪ</Label>
-            <Icon sf={"paperplane.fill"} 
+            <Icon sf={"paintpalette.fill"} 
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
