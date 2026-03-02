@@ -1,0 +1,27 @@
+{
+  "cli": {
+    "version": ">= 18.0.3",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "degengebre@icloud.com",
+        "ascAppId": "6745747292",
+        "appleTeamId": "KM8K5CCMHD"
+      }
+    }
+  }
+}

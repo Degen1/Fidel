@@ -35,7 +35,7 @@ export default function IndexScreen() {
 
       <View style={styles.mainArea}>
         <Text style={styles.currentLetter}>{LETTERS[activeIndex]}</Text>
-        <Text style={styles.hint}>Swipe up to cycle</Text>
+        <Text style={styles.hint}>ንላዕሊ ድፍኡ</Text>
       </View>
     </View>
   );
