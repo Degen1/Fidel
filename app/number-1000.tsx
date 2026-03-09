@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
-const NUMBERS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const NUMBERS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
 const LIGHT_COLORS = {
@@ -24,8 +25,9 @@ const DARK_COLORS = {
   hintText: "#9CA3AF",
 };
 
-export default function NumbersScreen() {
+export default function ThousandsScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
 
@@ -45,6 +47,8 @@ export default function NumbersScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.screenBg }]} {...panResponder.panHandlers}>
+      <Text style={[styles.screenZero, { color: colors.mainText, top: insets.top + 8 }]}>000</Text>
+
       <View style={[styles.numbersColumn, { backgroundColor: colors.columnBg }]}>
         {NUMBERS.map((number, index) => {
           const isActive = index === activeIndex;
@@ -75,7 +79,7 @@ export default function NumbersScreen() {
       </View>
 
       <View style={styles.mainArea}>
-        <Text style={[styles.currentNumber, { color: colors.mainText }]}>{NUMBERS[activeIndex]}</Text>
+        <Text style={[styles.currentNumber, { color: colors.mainText }]}>{NUMBERS[activeIndex]}000</Text>
         <Text style={[styles.hint, { color: colors.hintText }]}>ንላዕሊ ድፍኡ</Text>
       </View>
     </View>
@@ -86,6 +90,13 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     flexDirection: "row",
+  },
+  screenZero: {
+    position: "absolute",
+    right: 18,
+    fontSize: 28,
+    fontWeight: "800",
+    zIndex: 10,
   },
   numbersColumn: {
     width: 88,
@@ -100,6 +111,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignItems: "center",
     justifyContent: "center",
+    position: "relative",
   },
   numberItemActive: {
     backgroundColor: "#0EA5E9",
