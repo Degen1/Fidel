@@ -2,7 +2,10 @@ import { useRef, useState } from "react";
 import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
-const LETTERS = ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"];
+const LETTER_GROUPS = [
+  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
+  ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
+];
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
 const LIGHT_COLORS = {
@@ -26,8 +29,30 @@ const DARK_COLORS = {
 
 export default function IndexScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
+  const activeLetters = LETTER_GROUPS[activeGroupIndex];
+  const canGoBack = activeGroupIndex > 0;
+  const canGoNext = activeGroupIndex < LETTER_GROUPS.length - 1;
+
+  const goToPreviousGroup = () => {
+    if (!canGoBack) {
+      return;
+    }
+
+    setActiveGroupIndex((current) => current - 1);
+    setActiveIndex(0);
+  };
+
+  const goToNextGroup = () => {
+    if (!canGoNext) {
+      return;
+    }
+
+    setActiveGroupIndex((current) => current + 1);
+    setActiveIndex(0);
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -35,9 +60,9 @@ export default function IndexScreen() {
         Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dy < SWIPE_UP_THRESHOLD) {
-          setActiveIndex((current) => (current + 1) % LETTERS.length);
+          setActiveIndex((current) => (current + 1) % activeLetters.length);
         } else if (gestureState.dy > SWIPE_DOWN_THRESHOLD) {
-          setActiveIndex((current) => (current - 1 + LETTERS.length) % LETTERS.length);
+          setActiveIndex((current) => (current - 1 + activeLetters.length) % activeLetters.length);
         }
       },
     }),
@@ -46,37 +71,67 @@ export default function IndexScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.screenBg }]} {...panResponder.panHandlers}>
       <View style={[styles.lettersColumn, { backgroundColor: colors.columnBg }]}>
-        {LETTERS.map((letter, index) => {
-          const isActive = index === activeIndex;
+        <View style={styles.subjectList}>
+          {activeLetters.map((letter, index) => {
+            const isActive = index === activeIndex;
 
-          return (
-            <Pressable
-              key={letter}
-              onPress={() => setActiveIndex(index)}
-              style={[
-                styles.letterItem,
-                isActive && styles.letterItemActive,
-                isActive && { backgroundColor: colors.activeItemBg },
-              ]}
-            >
-              <Text
+            return (
+              <Pressable
+                key={letter}
+                onPress={() => setActiveIndex(index)}
                 style={[
-                  styles.letterText,
-                  { color: colors.itemText },
-                  isActive && styles.letterTextActive,
-                  isActive && { color: colors.activeItemText },
+                  styles.letterItem,
+                  isActive && styles.letterItemActive,
+                  isActive && { backgroundColor: colors.activeItemBg },
                 ]}
               >
-                {letter}
-              </Text>
-            </Pressable>
-          );
-        })}
+                <Text
+                  style={[
+                    styles.letterText,
+                    { color: colors.itemText },
+                    isActive && styles.letterTextActive,
+                    isActive && { color: colors.activeItemText },
+                  ]}
+                >
+                  {letter}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.columnNavigation}>
+          <Pressable
+            onPress={goToPreviousGroup}
+            disabled={!canGoBack}
+            style={[
+              styles.arrowButton,
+              { backgroundColor: colors.activeItemBg },
+              !canGoBack && styles.arrowButtonDisabled,
+            ]}
+          >
+            <Text style={[styles.arrowText, { color: colors.activeItemText }]}>↑</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={goToNextGroup}
+            disabled={!canGoNext}
+            style={[
+              styles.arrowButton,
+              { backgroundColor: colors.activeItemBg },
+              !canGoNext && styles.arrowButtonDisabled,
+            ]}
+          >
+            <Text style={[styles.arrowText, { color: colors.activeItemText }]}>↓</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.mainArea}>
-        <Text style={[styles.currentLetter, { color: colors.mainText }]}>{LETTERS[activeIndex]}</Text>
-        <Text style={[styles.hint, { color: colors.hintText }]}>ንላዕሊ ድፍኡ</Text>
+        <View style={styles.contentSection}>
+          <Text style={[styles.currentLetter, { color: colors.mainText }]}>{activeLetters[activeIndex]}</Text>
+          <Text style={[styles.hint, { color: colors.hintText }]}>ንላዕሊ ድፍኡ</Text>
+        </View>
       </View>
     </View>
   );
@@ -91,6 +146,10 @@ const styles = StyleSheet.create({
     width: 88,
     paddingTop: 64,
     paddingBottom: 24,
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  subjectList: {
     alignItems: "center",
   },
   letterItem: {
@@ -113,9 +172,11 @@ const styles = StyleSheet.create({
   },
   mainArea: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
+  },
+  contentSection: {
+    alignItems: "center",
   },
   currentLetter: {
     fontSize: 140,
@@ -126,5 +187,23 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 16,
     fontWeight: "600",
+  },
+  columnNavigation: {
+    gap: 10,
+  },
+  arrowButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  arrowButtonDisabled: {
+    opacity: 0.45,
+  },
+  arrowText: {
+    fontSize: 24,
+    fontWeight: "700",
+    lineHeight: 26,
   },
 });
