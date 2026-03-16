@@ -42,6 +42,8 @@ const DARK_COLORS = {
 export type ColorsScreenProps = {
   hideNavigation?: boolean;
   palette?: ColorItem[];
+  baseMixedColors?: ColorItem[];
+  onAddBaseMixedColor?: (color: ColorItem) => void;
 };
 
 export default function ColorsScreen({ hideNavigation = false, palette = EXTENDED_COLORS }: ColorsScreenProps) {
@@ -92,6 +94,7 @@ export default function ColorsScreen({ hideNavigation = false, palette = EXTENDE
 
   const activeColor = colorOptions[activeIndex] ?? colorOptions[0];
   const activeLabel = useMemo(() => activeColor.label, [activeColor]);
+  const activeColorValue = activeColor.value;
 
   return (
     <View style={[styles.screen, { backgroundColor: themeColors.screenBg }]} {...panResponder.panHandlers}>
@@ -105,6 +108,7 @@ export default function ColorsScreen({ hideNavigation = false, palette = EXTENDE
         <View style={styles.subjectList}>
           {colorOptions.map((color, index) => {
             const isActive = index === activeIndex;
+            const colorHex = color.value;
 
             return (
               <Pressable
@@ -112,7 +116,7 @@ export default function ColorsScreen({ hideNavigation = false, palette = EXTENDE
                 onPress={() => setActiveIndex(index)}
                 style={[
                   styles.colorItem,
-                  { backgroundColor: color.value },
+                  { backgroundColor: colorHex },
                   isActive && styles.colorItemActive,
                   isActive && { borderColor: themeColors.activeBorder },
                 ]}
@@ -155,7 +159,7 @@ export default function ColorsScreen({ hideNavigation = false, palette = EXTENDE
       <View style={styles.mainArea}>
         <View style={styles.contentSection}>
           <Text style={[styles.title, { color: themeColors.titleText }]}>{activeLabel}</Text>
-          <View style={[styles.previewCircle, { backgroundColor: activeColor.value }]} />
+          <View style={[styles.previewCircle, { backgroundColor: activeColorValue }]} />
           <Text style={[styles.hint, { color: themeColors.hintText }]}>ንላዕሊ ድፍኡ</Text>
         </View>
       </View>

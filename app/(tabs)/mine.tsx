@@ -16,12 +16,12 @@ const TOPIC_OPTIONS: DropdownTopicKey[] = [
 ];
 
 const TOPIC_ROUTES: Record<DropdownTopicKey, Href> = {
-  letters: { pathname: "/more", params: { segment: "letters" } },
-  numbers: { pathname: "/more", params: { segment: "numbers" } },
-  colors: { pathname: "/more", params: { segment: "colors" } },
+  letters: { pathname: "/letters1", params: { segment: "letters" } },
+  numbers: { pathname: "/letters1", params: { segment: "numbers" } },
+  colors: { pathname: "/letters2", params: { segment: "colors" } },
   shapes: { pathname: "/letters2", params: { segment: "shapes" } },
   size: { pathname: "/letters2", params: { segment: "size" } },
-  patterns: { pathname: "/letters2", params: { segment: "patterns" } },
+  patterns: { pathname: "/letters1", params: { segment: "patterns" } },
 };
 
 export default function MineScreen() {

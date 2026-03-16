@@ -6,7 +6,7 @@ export default function TabLayout() {
   return (
     <NativeTabs>
           <NativeTabs.Trigger name="mine">
-            <Icon src={require('../../assets/images/tab-letter-fi.png')} />
+            <Icon src={require('../../assets/images/tab.png')} />
           </NativeTabs.Trigger>
 
           
