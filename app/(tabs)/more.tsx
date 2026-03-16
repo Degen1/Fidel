@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { View, StyleSheet, Text, Pressable, Image, ScrollView } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { View, StyleSheet, Text, Pressable, Image, ScrollView, PanResponder } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -7,6 +7,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const SUBJECT_TABS = ["class", "games", "tests"] as const;
 type SubjectTab = (typeof SUBJECT_TABS)[number];
+const SWIPE_DISTANCE_THRESHOLD = 40;
+const SWIPE_VELOCITY_THRESHOLD = 0.35;
 
 const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
   const value = Array.isArray(segment) ? segment[0] : segment;
@@ -32,7 +34,7 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
 
 const APP_SECTIONS = {
   class: {
-    title: "Pre-K",
+    title: "Class",
     apps: [
       { name: "Pre-K 1", href: "/letters1", image: require("../../assets/images/prek1.png") },
       { name: "Pre-K 2", href: "/prek2", image: require("../../assets/images/prek1.png") },
@@ -48,12 +50,12 @@ const APP_SECTIONS = {
   games: {
     title: "Games",
     apps: [
-      { name: "numbers1", href: "/numbers1", image: require("../../assets/images/icon.png") },
-      { name: "numbers2", href: "/numbers2", image: require("../../assets/images/icon.png") },
-      { name: "numbers3", href: "/numbers3", image: require("../../assets/images/icon.png") },
-      { name: "numbers4", href: "/numbers4", image: require("../../assets/images/icon.png") },
-      { name: "numbers5", href: "/numbers5", image: require("../../assets/images/icon.png") },
-      { name: "numbers6", href: "/numbers6", image: require("../../assets/images/icon.png") },
+      { name: "ሕብሪ", href: "/game1", image: require("../../assets/images/game1.png") },
+      { name: "ቁጽሪ", href: "/game2", image: require("../../assets/images/game2.png") },
+      { name: "ቅርጺ", href: "/game3", image: require("../../assets/images/game3.png") },
+      { name: "ግዝፊ", href: "/game4", image: require("../../assets/images/game4.png") },
+      { name: "ሕቶ", href: "/game5", image: require("../../assets/images/game5.png") },
+      { name: "ክንደይ", href: "/game6", image: require("../../assets/images/game6.png") },
     ],
   },
   tests: {
@@ -62,12 +64,22 @@ const APP_SECTIONS = {
       { name: "colors1", href: "/colors1", image: require("../../assets/images/icon.png") },
       { name: "colors2", href: "/colors2", image: require("../../assets/images/icon.png") },
       { name: "colors3", href: "/colors3", image: require("../../assets/images/icon.png") },
-      { name: "colors4", href: "/colors4", image: require("../../assets/images/icon.png") },
-      { name: "colors5", href: "/colors5", image: require("../../assets/images/icon.png") },
-      { name: "colors6", href: "/colors6", image: require("../../assets/images/icon.png") },
+      { name: "colors4", href: "/colors1", image: require("../../assets/images/icon.png") },
+      { name: "colors5", href: "/colors2", image: require("../../assets/images/icon.png") },
+      { name: "colors6", href: "/colors3", image: require("../../assets/images/icon.png") },
     ],
   },
 } as const;
+
+const splitIntoRows = <T,>(items: T[], rowSize: number) => {
+  const rows: T[][] = [];
+
+  for (let index = 0; index < items.length; index += rowSize) {
+    rows.push(items.slice(index, index + rowSize));
+  }
+
+  return rows;
+};
 
 export default function NumbersScreen() {
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
@@ -86,25 +98,96 @@ export default function NumbersScreen() {
   const selectedKey = SUBJECT_TABS[segmentIndex] as keyof typeof APP_SECTIONS;
   const selectedSection = APP_SECTIONS[selectedKey];
   const isClassSection = selectedKey === "class";
-  const classPreKApps = APP_SECTIONS.class.apps.slice(0, 3);
-  const classFirstGradeApps = APP_SECTIONS.class.apps.slice(3, 6);
-  const classSecondGradeApps = APP_SECTIONS.class.apps.slice(6, 9);
+  const gradeApps = useMemo(() => {
+    if (isClassSection) {
+      const preK = selectedSection.apps.slice(0, 3);
+      const firstGrade = selectedSection.apps.slice(3, 6);
+      const secondGrade = selectedSection.apps.slice(6, 9);
+
+      return { preK, firstGrade, secondGrade };
+    }
+
+    // For Games/Tests, show all 6 apps in each grade block (3 columns x 2 rows).
+    return {
+      preK: selectedSection.apps,
+      firstGrade: selectedSection.apps,
+      secondGrade: selectedSection.apps,
+    };
+  }, [isClassSection, selectedSection.apps]);
 
   const renderAppCard = (app: (typeof selectedSection.apps)[number], keyPrefix: string) => (
     <Pressable
       key={`${keyPrefix}-${app.name}`}
       onPress={() => router.push(app.href)}
-      style={[styles.appCard, { backgroundColor: cardColor }, isClassSection && styles.letterAppCard]}
+      style={[styles.appCard, isClassSection && styles.letterAppCard]}
     >
-      <Image source={app.image} style={styles.appImage} resizeMode="cover" />
-      <View style={styles.appCardLabel}>
-        <Text style={styles.appCardText}>{app.name}</Text>
+      <View
+        style={[
+          styles.appImageContainer,
+          { backgroundColor: cardColor },
+          isClassSection && styles.letterImageContainer,
+        ]}
+      >
+        <Image source={app.image} style={styles.appImage} resizeMode="cover" />
       </View>
+
+      <Text style={[styles.appCardText, { color: textColor }]}>{app.name}</Text>
     </Pressable>
   );
 
+  const renderThreeColumnRows = (
+    apps: (typeof selectedSection.apps)[number][],
+    groupKey: string
+  ) => {
+    const rows = splitIntoRows(apps, 3);
+
+    return rows.map((rowApps, rowIndex) => (
+      <View
+        key={`${groupKey}-row-${rowIndex}`}
+        style={[styles.appsRow, rowIndex === rows.length - 1 && styles.appsRowLast]}
+      >
+        {rowApps.map((app) => renderAppCard(app, `${groupKey}-r${rowIndex}`))}
+        {Array.from({ length: Math.max(0, 3 - rowApps.length) }).map((_, spacerIndex) => (
+          <View key={`${groupKey}-spacer-${rowIndex}-${spacerIndex}`} style={styles.appCardSpacer} />
+        ))}
+      </View>
+    ));
+  };
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+          return isHorizontalSwipe && Math.abs(gestureState.dx) > 12;
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          const swipedLeft =
+            gestureState.dx <= -SWIPE_DISTANCE_THRESHOLD ||
+            gestureState.vx <= -SWIPE_VELOCITY_THRESHOLD;
+          const swipedRight =
+            gestureState.dx >= SWIPE_DISTANCE_THRESHOLD ||
+            gestureState.vx >= SWIPE_VELOCITY_THRESHOLD;
+
+          if (swipedLeft) {
+            setSegmentIndex((currentIndex) => Math.min(SUBJECT_TABS.length - 1, currentIndex + 1));
+            return;
+          }
+
+          if (swipedRight) {
+            setSegmentIndex((currentIndex) => Math.max(0, currentIndex - 1));
+          }
+        },
+      }),
+    []
+  );
+
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor }]} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.root, { backgroundColor }]}
+      edges={["top"]}
+      {...panResponder.panHandlers}
+    >
       <View style={styles.segmentedControlContainer}>
         <SegmentedControl
           values={SUBJECT_TABS}
@@ -119,29 +202,27 @@ export default function NumbersScreen() {
         contentContainerStyle={styles.contentContainerInner}
         showsVerticalScrollIndicator={false}
       >
-        {isClassSection ? (
-          <>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>{selectedSection.title}</Text>
-            <View style={[styles.appsGrid, styles.lettersAppsList]}>
-              {classPreKApps.map((app) => renderAppCard(app, selectedKey))}
-            </View>
-            <Text style={[styles.groupTitle, { color: textColor }]}>first grade</Text>
-            <View style={[styles.appsGrid, styles.lettersAppsList]}>
-              {classFirstGradeApps.map((app) => renderAppCard(app, selectedKey))}
-            </View>
-            <Text style={[styles.groupTitle, { color: textColor }]}>second grade</Text>
-            <View style={[styles.appsGrid, styles.lettersAppsList]}>
-              {classSecondGradeApps.map((app) => renderAppCard(app, selectedKey))}
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={[styles.sectionTitle, { color: textColor }]}>{selectedSection.title}</Text>
-            <View style={styles.appsGrid}>
-              {selectedSection.apps.map((app) => renderAppCard(app, selectedKey))}
-            </View>
-          </>
-        )}
+        <>
+          <Text style={[styles.sectionTitle, { color: textColor }]}>{selectedSection.title}</Text>
+          <Text style={[styles.groupTitle, { color: textColor }]}>Pre-K</Text>
+          <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
+            {isClassSection
+              ? gradeApps.preK.map((app) => renderAppCard(app, `${selectedKey}-prek`))
+              : renderThreeColumnRows(gradeApps.preK, `${selectedKey}-prek`)}
+          </View>
+          <Text style={[styles.groupTitle, { color: textColor }]}>First Grade</Text>
+          <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
+            {isClassSection
+              ? gradeApps.firstGrade.map((app) => renderAppCard(app, `${selectedKey}-first`))
+              : renderThreeColumnRows(gradeApps.firstGrade, `${selectedKey}-first`)}
+          </View>
+          <Text style={[styles.groupTitle, { color: textColor }]}>Second Grade</Text>
+          <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
+            {isClassSection
+              ? gradeApps.secondGrade.map((app) => renderAppCard(app, `${selectedKey}-second`))
+              : renderThreeColumnRows(gradeApps.secondGrade, `${selectedKey}-second`)}
+          </View>
+        </>
       </ScrollView>
     </SafeAreaView>
   );
@@ -179,9 +260,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   appsGrid: {
+    width: "100%",
+  },
+  appsRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  appsRowLast: {
+    marginBottom: 0,
   },
   lettersAppsList: {
     flexDirection: "column",
@@ -189,34 +276,34 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   appCard: {
-    width: "31%",
-    aspectRatio: 1,
-    borderRadius: 12,
+    width: "32%",
     marginBottom: 10,
-    overflow: "hidden",
-    position: "relative",
+    alignItems: "center",
+  },
+  appCardSpacer: {
+    width: "32%",
   },
   letterAppCard: {
     width: "100%",
-    aspectRatio: 2,
     marginBottom: 12,
+  },
+  appImageContainer: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  letterImageContainer: {
+    aspectRatio: 2,
   },
   appImage: {
     width: "100%",
     height: "100%",
   },
-  appCardLabel: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingVertical: 4,
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-  },
   appCardText: {
-    color: "#FFFFFF",
+    marginTop: 6,
     fontSize: 12,
     fontWeight: "700",
+    textAlign: "center",
   },
 });

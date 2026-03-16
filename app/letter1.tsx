@@ -1,31 +1,44 @@
-import { useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { View, Text, StyleSheet, PanResponder, Pressable, Modal, ScrollView } from "react-native";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import NumbersOne from "./numbers1";
 import NumbersTwo from "./numbers2";
 import NumbersThree from "./numbers3";
-import NumbersFour from "./numbers4";
-import ColorsOne from "./colors1";
-import ColorsTwo from "./colors2";
-import ColorsThree from "./colors3";
 
 const LETTER_GROUPS = [
   ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
   ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
-   ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
-   ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
-   ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
+  ["በ", "ቡ", "ቢ", "ባ", "ቤ", "ብ", "ቦ"],
+  ["ሰ", "ሱ", "ሲ", "ሳ", "ሴ", "ስ", "ሶ"],
+  ["ሸ", "ሹ", "ሺ", "ሻ", "ሼ", "ሽ", "ሾ"],
+  ["ዐ", "ዑ", "ዒ", "ዓ", "ዔ", "ዕ", "ዖ"],
+  ["ወ", "ዉ", "ዊ", "ዋ", "ዌ", "ው", "ዎ"],
+  ["መ", "ሙ", "ሚ", "ማ", "ሜ", "ም", "ሞ"],
+  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
+  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
+  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
+
 ];
-const SEGMENT_OPTIONS = ["letters", "numbers", "colors"];
-const NUMBER_TABS = [NumbersOne, NumbersTwo, NumbersThree, NumbersFour];
-const COLOR_TABS = [ColorsOne, ColorsTwo, ColorsThree];
+const PATTERN_ITEMS = ["11", "12", "ሀሀ", "ሀ ሁ"];
+const SEGMENT_OPTIONS = ["letters", "numbers", "patterns"];
+const NUMBER_TABS = [NumbersOne, NumbersTwo, NumbersThree];
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
+const MODAL_CLOSE_SWIPE_THRESHOLD = 56;
+const LETTERS_PER_ROW = 7;
+const MODAL_ROW_COLORS = [
+  "#F7E7CF",
+  "#D8E8F8",
+  "#D6ECDD",
+  "#F2DDDD",
+  "#E5DDF0",
+  "#F7E7CF",
+  "#D8E8F8",
+  "#D6ECDD",
+];
 const LIGHT_COLORS = {
   screenBg: "#F3F4F6",
   columnBg: "#E5E7EB",
@@ -45,27 +58,75 @@ const DARK_COLORS = {
   hintText: "#9CA3AF",
 };
 
+const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
+  const value = Array.isArray(segment) ? segment[0] : segment;
+
+  if (!value) {
+    return 0;
+  }
+
+  const normalized = value.toLowerCase();
+  const aliasMap: Record<string, (typeof SEGMENT_OPTIONS)[number]> = {
+    letters: "letters",
+    letter: "letters",
+    numbers: "numbers",
+    number: "numbers",
+    patterns: "patterns",
+    pattern: "patterns",
+    colors: "patterns",
+    color: "patterns",
+  };
+  const resolvedValue = aliasMap[normalized] ?? "letters";
+  const index = SEGMENT_OPTIONS.indexOf(resolvedValue);
+
+  return index >= 0 ? index : 0;
+};
+
 export default function IndexScreen() {
+  const params = useLocalSearchParams<{ segment?: string | string[] }>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [numberPageIndex, setNumberPageIndex] = useState(0);
-  const [colorPageIndex, setColorPageIndex] = useState(0);
-  const [segmentIndex, setSegmentIndex] = useState(0);
+  const [patternIndex, setPatternIndex] = useState(0);
+  const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(params.segment));
+  const [showAllLetters, setShowAllLetters] = useState(false);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
   const activeLetters = LETTER_GROUPS[activeGroupIndex];
+  const activePattern = PATTERN_ITEMS[patternIndex];
   const ActiveNumbersScreen = NUMBER_TABS[numberPageIndex];
-  const ActiveColorsScreen = COLOR_TABS[colorPageIndex];
   const canGoBack = activeGroupIndex > 0;
   const canGoNext = activeGroupIndex < LETTER_GROUPS.length - 1;
   const canGoBackNumbers = numberPageIndex > 0;
   const canGoNextNumbers = numberPageIndex < NUMBER_TABS.length - 1;
-  const canGoBackColors = colorPageIndex > 0;
-  const canGoNextColors = colorPageIndex < COLOR_TABS.length - 1;
+  const canGoBackPatterns = patternIndex > 0;
+  const canGoNextPatterns = patternIndex < PATTERN_ITEMS.length - 1;
   const showBottomNavigation = segmentIndex === 0 || segmentIndex === 1 || segmentIndex === 2;
   const segmentBottom = Math.max(insets.bottom + 8, 14);
   const navigationBottom = segmentBottom + 56;
+  const letterButtonTop = insets.top + 12;
+  const allLetters = useMemo(() => Array.from(new Set(LETTER_GROUPS.flat())), []);
+  const modalScrollOffsetRef = useRef(0);
+  const allLetterRows = useMemo(() => {
+    const rows: string[][] = [];
+
+    for (let index = 0; index < allLetters.length; index += LETTERS_PER_ROW) {
+      rows.push(allLetters.slice(index, index + LETTERS_PER_ROW));
+    }
+
+    return rows;
+  }, [allLetters]);
+
+  useEffect(() => {
+    setSegmentIndex(getSegmentIndexFromParam(params.segment));
+  }, [params.segment]);
+
+  useEffect(() => {
+    if (segmentIndex !== 0) {
+      setShowAllLetters(false);
+    }
+  }, [segmentIndex]);
 
   const goToPreviousGroup = () => {
     if (!canGoBack) {
@@ -99,6 +160,38 @@ export default function IndexScreen() {
     }),
   ).current;
 
+  const patternPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy < SWIPE_UP_THRESHOLD) {
+          setPatternIndex((current) => (current + 1) % PATTERN_ITEMS.length);
+        } else if (gestureState.dy > SWIPE_DOWN_THRESHOLD) {
+          setPatternIndex((current) => (current - 1 + PATTERN_ITEMS.length) % PATTERN_ITEMS.length);
+        }
+      },
+    }),
+  ).current;
+
+  const modalPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+        gestureState.dy > 8 &&
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+        modalScrollOffsetRef.current <= 0,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        gestureState.dy > 8 &&
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
+        modalScrollOffsetRef.current <= 0,
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > MODAL_CLOSE_SWIPE_THRESHOLD || gestureState.vy > 0.75) {
+          setShowAllLetters(false);
+        }
+      },
+    }),
+  ).current;
+
   const handleBack = () => {
     if (segmentIndex === 0) {
       goToPreviousGroup();
@@ -110,8 +203,8 @@ export default function IndexScreen() {
       return;
     }
 
-    if (segmentIndex === 2 && canGoBackColors) {
-      setColorPageIndex((current) => current - 1);
+    if (segmentIndex === 2 && canGoBackPatterns) {
+      setPatternIndex((current) => current - 1);
     }
   };
 
@@ -126,20 +219,20 @@ export default function IndexScreen() {
       return;
     }
 
-    if (segmentIndex === 2 && canGoNextColors) {
-      setColorPageIndex((current) => current + 1);
+    if (segmentIndex === 2 && canGoNextPatterns) {
+      setPatternIndex((current) => current + 1);
     }
   };
 
-  const currentCanGoBack = segmentIndex === 0 ? canGoBack : segmentIndex === 1 ? canGoBackNumbers : canGoBackColors;
-  const currentCanGoNext = segmentIndex === 0 ? canGoNext : segmentIndex === 1 ? canGoNextNumbers : canGoNextColors;
+  const currentCanGoBack = segmentIndex === 0 ? canGoBack : segmentIndex === 1 ? canGoBackNumbers : canGoBackPatterns;
+  const currentCanGoNext = segmentIndex === 0 ? canGoNext : segmentIndex === 1 ? canGoNextNumbers : canGoNextPatterns;
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.screenBg }]} edges={[]}>
       <View style={styles.contentContainer}>
         {segmentIndex === 0 ? (
           <View style={styles.screen} {...panResponder.panHandlers}>
-            <View style={[styles.lettersColumn, { backgroundColor: colors.columnBg }]}>
+            <View style={[styles.leftColumn, { backgroundColor: colors.columnBg }]}>
               <View style={styles.subjectList}>
                 {activeLetters.map((letter, index) => {
                   const isActive = index === activeIndex;
@@ -149,16 +242,16 @@ export default function IndexScreen() {
                       key={letter}
                       onPress={() => setActiveIndex(index)}
                       style={[
-                        styles.letterItem,
-                        isActive && styles.letterItemActive,
+                        styles.leftItem,
+                        isActive && styles.leftItemActive,
                         isActive && { backgroundColor: colors.activeItemBg },
                       ]}
                     >
                       <Text
                         style={[
-                          styles.letterText,
+                          styles.leftItemText,
                           { color: colors.itemText },
-                          isActive && styles.letterTextActive,
+                          isActive && styles.leftItemTextActive,
                           isActive && { color: colors.activeItemText },
                         ]}
                       >
@@ -171,15 +264,75 @@ export default function IndexScreen() {
             </View>
 
             <View style={styles.mainArea}>
+              <Pressable
+                onPress={() => setShowAllLetters(true)}
+                style={[
+                  styles.fiCircleButton,
+                  {
+                    top: letterButtonTop,
+                    backgroundColor: colors.columnBg,
+                    borderColor: colors.activeItemBg,
+                  },
+                ]}
+              >
+                <Text style={[styles.fiCircleButtonText, { color: colors.mainText }]}>ፊ</Text>
+              </Pressable>
+
               <View style={styles.contentSection}>
-                <Text style={[styles.currentLetter, { color: colors.mainText }]}>{activeLetters[activeIndex]}</Text>
+                <>
+                  <Text style={[styles.currentLetter, { color: colors.mainText }]}>{activeLetters[activeIndex]}</Text>
+                  <Text style={[styles.hint, { color: colors.hintText }]}>ንላዕሊ ድፍኡ</Text>
+                </>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {segmentIndex === 1 ? <ActiveNumbersScreen /> : null}
+
+        {segmentIndex === 2 ? (
+          <View style={styles.screen} {...patternPanResponder.panHandlers}>
+            <View style={[styles.leftColumn, { backgroundColor: colors.columnBg }]}>
+              <View style={styles.subjectList}>
+                {PATTERN_ITEMS.map((pattern, index) => {
+                  const isActive = index === patternIndex;
+
+                  return (
+                    <Pressable
+                      key={pattern}
+                      onPress={() => setPatternIndex(index)}
+                      style={[
+                        styles.leftItem,
+                        isActive && styles.leftItemActive,
+                        isActive && { backgroundColor: colors.activeItemBg },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.patternItemText,
+                          { color: colors.itemText },
+                          isActive && styles.leftItemTextActive,
+                          isActive && { color: colors.activeItemText },
+                        ]}
+                      >
+                        {pattern}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View style={styles.mainArea}>
+              <View style={styles.contentSection}>
+                <Text style={[styles.currentPattern, { color: colors.mainText }]}>
+                  {`${activePattern} ${activePattern} ${activePattern}`}
+                </Text>
                 <Text style={[styles.hint, { color: colors.hintText }]}>ንላዕሊ ድፍኡ</Text>
               </View>
             </View>
           </View>
         ) : null}
-        {segmentIndex === 1 ? <ActiveNumbersScreen /> : null}
-        {segmentIndex === 2 ? <ActiveColorsScreen hideNavigation /> : null}
       </View>
 
       {showBottomNavigation ? (
@@ -218,6 +371,55 @@ export default function IndexScreen() {
         tintColor={colors.activeItemBg}
         style={[styles.bottomSegment, { bottom: segmentBottom }]}
       />
+
+      <Modal
+        transparent
+        animationType="slide"
+        visible={showAllLetters}
+        onRequestClose={() => setShowAllLetters(false)}
+      >
+        <View style={styles.fullScreenModal}>
+          <View
+            style={[
+              styles.modalContentContainer,
+              {
+                backgroundColor: colors.columnBg,
+                paddingBottom: Math.max(insets.bottom + 10, 16),
+              },
+            ]}
+            {...modalPanResponder.panHandlers}
+          >
+            <View style={styles.modalHandleArea}>
+              <View style={[styles.modalSwipeHandle, { backgroundColor: colors.hintText }]} />
+            </View>
+            <Text style={[styles.modalTitle, { color: colors.mainText }]}>ኩሎም ፊደላት</Text>
+            <ScrollView
+              style={styles.lettersGrid}
+              contentContainerStyle={styles.lettersGridContent}
+              showsVerticalScrollIndicator={false}
+              onScroll={(event) => {
+                modalScrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+              }}
+              scrollEventThrottle={16}
+            >
+              {allLetterRows.map((row, rowIndex) => (
+                <View
+                  key={`letters-row-${rowIndex}`}
+                  style={[styles.lettersRowCard, { backgroundColor: MODAL_ROW_COLORS[rowIndex % MODAL_ROW_COLORS.length] }]}
+                >
+                  <View style={styles.lettersRow}>
+                    {row.map((letter) => (
+                      <View key={`${rowIndex}-${letter}`} style={styles.modalLetterCell}>
+                        <Text style={[styles.modalLetterText, { color: colors.mainText }]}>{letter}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -233,7 +435,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
   },
-  lettersColumn: {
+  leftColumn: {
     width: 88,
     paddingTop: 64,
     paddingBottom: 24,
@@ -243,7 +445,7 @@ const styles = StyleSheet.create({
   subjectList: {
     alignItems: "center",
   },
-  letterItem: {
+  leftItem: {
     width: 52,
     height: 52,
     borderRadius: 14,
@@ -251,20 +453,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  letterItemActive: {
+  leftItemActive: {
     backgroundColor: "#0EA5E9",
   },
-  letterText: {
+  leftItemText: {
     fontSize: 30,
     fontWeight: "700",
   },
-  letterTextActive: {
+  patternItemText: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  leftItemTextActive: {
     color: "#FFFFFF",
   },
   mainArea: {
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 20,
+  },
+  fiCircleButton: {
+    position: "absolute",
+    right: 16,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 15,
+  },
+  fiCircleButtonText: {
+    fontSize: 26,
+    fontWeight: "800",
+    lineHeight: 30,
   },
   contentSection: {
     alignItems: "center",
@@ -273,6 +495,12 @@ const styles = StyleSheet.create({
     fontSize: 140,
     fontWeight: "800",
     lineHeight: 160,
+  },
+  currentPattern: {
+    fontSize: 48,
+    fontWeight: "800",
+    lineHeight: 62,
+    textAlign: "center",
   },
   hint: {
     marginTop: 8,
@@ -307,5 +535,73 @@ const styles = StyleSheet.create({
     height: 46,
     backgroundColor: "transparent",
     zIndex: 20,
+  },
+  fullScreenModal: {
+    flex: 1,
+    alignItems: "stretch",
+    justifyContent: "flex-end",
+    backgroundColor: "transparent",
+  },
+  modalSwipeHandle: {
+    alignSelf: "center",
+    width: 48,
+    height: 6,
+    borderRadius: 3,
+  },
+  modalHandleArea: {
+    width: "100%",
+    paddingTop: 2,
+    paddingBottom: 10,
+    alignItems: "center",
+  },
+  modalContentContainer: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: "100%",
+    height: "80%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 10,
+  },
+  lettersGrid: {
+    flex: 1,
+    width: "100%",
+  },
+  lettersGridContent: {
+    paddingTop: 4,
+    paddingBottom: 6,
+  },
+  lettersRowCard: {
+    width: "100%",
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  lettersRow: {
+    flexDirection: "row",
+  },
+  modalLetterCell: {
+    flex: 1,
+    marginHorizontal: 3,
+    aspectRatio: 1,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalLetterText: {
+    fontSize: 34,
+    fontWeight: "800",
+    lineHeight: 40,
   },
 });

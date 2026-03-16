@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, PanResponder } from "react-native";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import ColorsOne from "./colors1";
+import ColorsTwo from "./colors2";
+import ColorsThree from "./colors3";
+import { SIMPLE_COLORS, type ColorItem } from "./(tabs)/colors";
 
-type SegmentKey = "shapes" | "size" | "patterns";
+type SegmentKey = "colors" | "shapes" | "size";
+type NonColorSegmentKey = "shapes" | "size";
 
 type Item = {
   label: string;
   preview: string;
+  filledPreview?: string;
 };
 
 type Letter2Variant = "pre-k" | "first-grade";
@@ -18,47 +24,35 @@ type Letter2ScreenProps = {
   variant?: Letter2Variant;
 };
 
-const SEGMENT_OPTIONS: SegmentKey[] = ["shapes", "size", "patterns"];
-const SEGMENT_LABELS = ["shapes", "size", "patterns"];
+const SEGMENT_OPTIONS: SegmentKey[] = ["colors", "shapes", "size"];
+const SEGMENT_LABELS = ["colors", "shapes", "size"];
+const COLOR_TABS = [ColorsOne, ColorsTwo, ColorsThree];
+const REQUIRED_TWO_COLOR_MIXES = 3;
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
 
 const PRE_K_SHAPE_ITEMS: Item[] = [
-  { label: "Circle", preview: "○" },
-  { label: "Square", preview: "□" },
-  { label: "Triangle", preview: "△" },
-  { label: "Diamond", preview: "◇" },
-  { label: "Star", preview: "★" },
-  { label: "Hexagon", preview: "⬡" },
+  { label: "ክብ", preview: "○", filledPreview: "●" },
+  { label: "ካሬ", preview: "□", filledPreview: "■" },
+  { label: "ስሉስ ኩርናዕ", preview: "△", filledPreview: "▲" },
+  { label: "ሮምብ", preview: "◇", filledPreview: "◆" },
+  { label: "ኮኾብ", preview: "★", filledPreview: "★" },
+  { label: "ሽዱሽተ ኩርናዕ", preview: "⬡", filledPreview: "⬢" },
 ];
 
 const FIRST_GRADE_SHAPE_ITEMS: Item[] = [
-  { label: "Human", preview: "🧑" },
-  { label: "Boy", preview: "👦" },
-  { label: "Girl", preview: "👧" },
-  { label: "Dog", preview: "🐶" },
-  { label: "Cat", preview: "🐱" },
-  { label: "Bird", preview: "🐦" },
+  { label: "ሰብ", preview: "🧑" },
+  { label: "ወዲ", preview: "👦" },
+  { label: "ጓል", preview: "👧" },
+  { label: "ከልቢ", preview: "🐶" },
+  { label: "ድሙ", preview: "🐱" },
+  { label: "ዑፍ", preview: "🐦" },
 ];
 
 const SIZE_ITEMS: Item[] = [
-  { label: "small", preview: "S" },
-  { label: "medium", preview: "M" },
-  { label: "large", preview: "L" },
-];
-
-const PRE_K_PATTERN_ITEMS: Item[] = [
-  { label: "11", preview: "11" },
-  { label: "12", preview: "12" },
-  { label: "ሀሀ", preview: "ሀሀ" },
-  { label: "ሀ ሁ", preview: "ሀ ሁ" },
-];
-
-const FIRST_GRADE_PATTERN_ITEMS: Item[] = [
-  { label: "1 2 3", preview: "1 2 3" },
-  { label: "1 1 2", preview: "1 1 2" },
-  { label: "1 2 1", preview: "1 2 1" },
-  { label: "2 3 1", preview: "2 3 1" },
+  { label: "ንእሽቶ", preview: "S" },
+  { label: "ማእከላይ", preview: "M" },
+  { label: "ዓብዪ", preview: "L" },
 ];
 
 const LIGHT_COLORS = {
@@ -90,8 +84,19 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
     return 0;
   }
 
-  const normalized = value.toLowerCase() === "sizes" ? "size" : value.toLowerCase();
-  const index = SEGMENT_OPTIONS.indexOf(normalized as SegmentKey);
+  const normalized = value.toLowerCase();
+  const aliasMap: Record<string, SegmentKey> = {
+    colors: "colors",
+    color: "colors",
+    patterns: "colors",
+    pattern: "colors",
+    shapes: "shapes",
+    shape: "shapes",
+    size: "size",
+    sizes: "size",
+  };
+  const normalizedValue = aliasMap[normalized] ?? "colors";
+  const index = SEGMENT_OPTIONS.indexOf(normalizedValue);
 
   return index >= 0 ? index : 0;
 };
@@ -100,24 +105,25 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
   const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(params.segment));
   const [showShapePicker, setShowShapePicker] = useState(false);
-  const [selectedIndices, setSelectedIndices] = useState<Record<SegmentKey, number>>({
+  const [showShapeColorPicker, setShowShapeColorPicker] = useState(false);
+  const [selectedShapeColorValue, setSelectedShapeColorValue] = useState<string | null>(null);
+  const [colorPageIndex, setColorPageIndex] = useState(0);
+  const [baseMixedColors, setBaseMixedColors] = useState<ColorItem[]>([]);
+  const [selectedIndices, setSelectedIndices] = useState<Record<NonColorSegmentKey, number>>({
     shapes: 0,
     size: 0,
-    patterns: 0,
   });
 
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
   const shapeItems = variant === "pre-k" ? PRE_K_SHAPE_ITEMS : FIRST_GRADE_SHAPE_ITEMS;
-  const patternItems = variant === "pre-k" ? PRE_K_PATTERN_ITEMS : FIRST_GRADE_PATTERN_ITEMS;
-  const itemGroups: Record<SegmentKey, Item[]> = useMemo(
+  const itemGroups: Record<NonColorSegmentKey, Item[]> = useMemo(
     () => ({
       shapes: shapeItems,
       size: SIZE_ITEMS,
-      patterns: patternItems,
     }),
-    [shapeItems, patternItems],
+    [shapeItems],
   );
 
   useEffect(() => {
@@ -125,28 +131,55 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   }, [params.segment]);
 
   const currentSegment = SEGMENT_OPTIONS[segmentIndex];
-  const currentItems = itemGroups[currentSegment];
-  const currentIndex = selectedIndices[currentSegment];
+  const currentNonColorSegment: NonColorSegmentKey = currentSegment === "size" ? "size" : "shapes";
+  const currentItems = itemGroups[currentNonColorSegment];
+  const currentIndex = selectedIndices[currentNonColorSegment];
   const currentItem = currentItems[currentIndex];
   const selectedShape = shapeItems[selectedIndices.shapes];
   const selectedSize = SIZE_ITEMS[selectedIndices.size];
-  const selectedPattern = patternItems[selectedIndices.patterns].preview;
-  const canGoBack = currentIndex > 0;
-  const canGoNext = currentIndex < currentItems.length - 1;
-
   const segmentBottom = Math.max(insets.bottom + 8, 14);
   const navigationBottom = segmentBottom + 56;
   const plusTop = insets.top + 12;
   const pickerTop = plusTop + 50;
+  const shapeColor = selectedShapeColorValue ?? colors.mainText;
+
+  const ActiveColorsScreen = COLOR_TABS[colorPageIndex];
+  const canGoBackColors = colorPageIndex > 0;
+  const hasCompletedTwoColorMixes = baseMixedColors.length >= REQUIRED_TWO_COLOR_MIXES;
+  const canGoNextColors = colorPageIndex < COLOR_TABS.length - 1 && (colorPageIndex !== 1 || hasCompletedTwoColorMixes);
+  const canGoBackItems = currentIndex > 0;
+  const canGoNextItems = currentIndex < currentItems.length - 1;
+  const canGoBack = currentSegment === "colors" ? canGoBackColors : canGoBackItems;
+  const canGoNext = currentSegment === "colors" ? canGoNextColors : canGoNextItems;
+
+  const handleAddBaseMixedColor = useCallback((nextColor: ColorItem) => {
+    setBaseMixedColors((current) => {
+      if (current.some((color) => color.value.toLowerCase() === nextColor.value.toLowerCase())) {
+        return current;
+      }
+
+      return [...current, nextColor];
+    });
+  }, []);
 
   const setCurrentIndex = (nextIndex: number) => {
-    setSelectedIndices((current) => ({ ...current, [currentSegment]: nextIndex }));
+    if (currentSegment === "colors") {
+      return;
+    }
+
+    setSelectedIndices((current) => ({ ...current, [currentNonColorSegment]: nextIndex }));
   };
 
   const goBack = () => {
     if (!canGoBack) {
       return;
     }
+
+    if (currentSegment === "colors") {
+      setColorPageIndex((current) => current - 1);
+      return;
+    }
+
     setCurrentIndex(currentIndex - 1);
   };
 
@@ -154,18 +187,21 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
     if (!canGoNext) {
       return;
     }
+
+    if (currentSegment === "colors") {
+      setColorPageIndex((current) => current + 1);
+      return;
+    }
+
     setCurrentIndex(currentIndex + 1);
   };
 
   const previewText =
     currentSegment === "size"
       ? selectedShape.preview
-      : currentSegment === "patterns"
-        ? variant === "pre-k"
-          ? `${selectedPattern} ${selectedPattern} ${selectedPattern}`
-          : `${selectedPattern}   ${selectedPattern}`
+      : currentSegment === "shapes" && selectedShapeColorValue
+        ? currentItem.filledPreview ?? currentItem.preview
         : currentItem.preview;
-
   const previewLabel =
     currentSegment === "size" ? `${selectedShape.label} • ${selectedSize.label}` : currentItem.label;
 
@@ -173,115 +209,173 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+          currentSegment !== "colors" &&
+          Math.abs(gestureState.dy) > 8 &&
+          Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
         onPanResponderRelease: (_, gestureState) => {
+          if (currentSegment === "colors") {
+            return;
+          }
+
           if (gestureState.dy < SWIPE_UP_THRESHOLD) {
             setSelectedIndices((current) => {
-              const max = itemGroups[currentSegment].length;
-              const nextIndex = (current[currentSegment] + 1) % max;
-              return { ...current, [currentSegment]: nextIndex };
+              const max = itemGroups[currentNonColorSegment].length;
+              const nextIndex = (current[currentNonColorSegment] + 1) % max;
+              return { ...current, [currentNonColorSegment]: nextIndex };
             });
           } else if (gestureState.dy > SWIPE_DOWN_THRESHOLD) {
             setSelectedIndices((current) => {
-              const max = itemGroups[currentSegment].length;
-              const nextIndex = (current[currentSegment] - 1 + max) % max;
-              return { ...current, [currentSegment]: nextIndex };
+              const max = itemGroups[currentNonColorSegment].length;
+              const nextIndex = (current[currentNonColorSegment] - 1 + max) % max;
+              return { ...current, [currentNonColorSegment]: nextIndex };
             });
           }
         },
       }),
-    [currentSegment, itemGroups],
+    [currentSegment, currentNonColorSegment, itemGroups],
   );
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.screenBg }]} edges={[]}>
-      <View style={styles.screen} {...panResponder.panHandlers}>
-        <View style={[styles.leftColumn, { backgroundColor: colors.columnBg }]}>
-          {currentItems.map((item, index) => {
-            const isActive = index === currentIndex;
+      {currentSegment === "colors" ? (
+        <ActiveColorsScreen
+          hideNavigation
+          baseMixedColors={baseMixedColors}
+          onAddBaseMixedColor={colorPageIndex === 1 ? handleAddBaseMixedColor : undefined}
+        />
+      ) : (
+        <View style={styles.screen} {...panResponder.panHandlers}>
+          <View style={[styles.leftColumn, { backgroundColor: colors.columnBg }]}>
+            {currentItems.map((item, index) => {
+              const isActive = index === currentIndex;
 
-            return (
-              <Pressable
-                key={`${currentSegment}-${item.label}`}
-                onPress={() => setCurrentIndex(index)}
-                style={[
-                  styles.leftItem,
-                  isActive && styles.leftItemActive,
-                  isActive && { backgroundColor: colors.activeItemBg },
-                ]}
-              >
-                <Text
+              return (
+                <Pressable
+                  key={`${currentSegment}-${item.label}`}
+                  onPress={() => setCurrentIndex(index)}
                   style={[
-                    styles.leftItemText,
-                    { color: colors.itemText },
-                    isActive && styles.leftItemTextActive,
-                    isActive && { color: colors.activeItemText },
+                    styles.leftItem,
+                    isActive && styles.leftItemActive,
+                    isActive && { backgroundColor: colors.activeItemBg },
                   ]}
                 >
-                  {item.preview}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={styles.mainArea}>
-          {currentSegment === "size" ? (
-            <Pressable
-              onPress={() => setShowShapePicker((current) => !current)}
-              style={[styles.plusButton, { top: plusTop, backgroundColor: colors.activeItemBg }]}
-            >
-              <Text style={[styles.plusButtonText, { color: colors.activeItemText }]}>+</Text>
-            </Pressable>
-          ) : null}
-
-          {currentSegment === "size" && showShapePicker ? (
-            <View style={[styles.shapePicker, { top: pickerTop, backgroundColor: colors.columnBg }]}>
-              {shapeItems.map((shape, index) => {
-                const isActive = selectedIndices.shapes === index;
-
-                return (
-                  <Pressable
-                    key={shape.label}
-                    onPress={() => {
-                      setSelectedIndices((current) => ({ ...current, shapes: index }));
-                      setShowShapePicker(false);
-                    }}
-                    style={[styles.shapePickerItem, isActive && { backgroundColor: colors.activeItemBg }]}
+                  <Text
+                    style={[
+                      styles.leftItemText,
+                      { color: colors.itemText },
+                      isActive && styles.leftItemTextActive,
+                      isActive && { color: colors.activeItemText },
+                    ]}
                   >
-                    <Text
-                      style={[
-                        styles.shapePickerItemText,
-                        { color: colors.itemText },
-                        isActive && { color: colors.activeItemText },
-                      ]}
-                    >
-                      {shape.preview} {shape.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
+                    {item.preview}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-          <Text
-            style={[
-              styles.mainPreview,
-              { color: colors.mainText },
-              currentSegment === "size" && {
-                fontSize: SIZE_PREVIEW[selectedIndices.size],
-                lineHeight: SIZE_PREVIEW[selectedIndices.size] + 12,
-              },
-              currentSegment === "patterns" && styles.patternPreview,
-            ]}
-          >
-            {previewText}
-          </Text>
-          {currentSegment !== "patterns" ? (
+          <View style={styles.mainArea}>
+            {currentSegment === "size" ? (
+              <Pressable
+                onPress={() => {
+                  setShowShapePicker((current) => !current);
+                  setShowShapeColorPicker(false);
+                }}
+                style={[styles.plusButton, { top: plusTop, backgroundColor: colors.activeItemBg }]}
+              >
+                <Text style={[styles.plusButtonText, { color: colors.activeItemText }]}>+</Text>
+              </Pressable>
+            ) : null}
+
+            {currentSegment === "shapes" ? (
+              <Pressable
+                onPress={() => {
+                  setShowShapeColorPicker((current) => !current);
+                  setShowShapePicker(false);
+                }}
+                style={[styles.plusButton, { top: plusTop, backgroundColor: colors.activeItemBg }]}
+              >
+                <Text style={[styles.plusButtonText, { color: colors.activeItemText }]}>+</Text>
+              </Pressable>
+            ) : null}
+
+            {currentSegment === "size" && showShapePicker ? (
+              <View style={[styles.shapePicker, { top: pickerTop, backgroundColor: colors.columnBg }]}>
+                {shapeItems.map((shape, index) => {
+                  const isActive = selectedIndices.shapes === index;
+
+                  return (
+                    <Pressable
+                      key={shape.label}
+                      onPress={() => {
+                        setSelectedIndices((current) => ({ ...current, shapes: index }));
+                        setShowShapePicker(false);
+                      }}
+                      style={[styles.shapePickerItem, isActive && { backgroundColor: colors.activeItemBg }]}
+                    >
+                      <Text
+                        style={[
+                          styles.shapePickerItemText,
+                          { color: colors.itemText },
+                          isActive && { color: colors.activeItemText },
+                        ]}
+                      >
+                        {shape.preview} {shape.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            {currentSegment === "shapes" && showShapeColorPicker ? (
+              <View style={[styles.shapePicker, { top: pickerTop, backgroundColor: colors.columnBg }]}>
+                {SIMPLE_COLORS.map((colorOption) => {
+                  const isActive = selectedShapeColorValue === colorOption.value;
+                  const colorHex = colorOption.value;
+
+                  return (
+                    <Pressable
+                      key={`shape-color-${colorOption.value}`}
+                      onPress={() => {
+                        setSelectedShapeColorValue(colorOption.value);
+                        setShowShapeColorPicker(false);
+                      }}
+                      style={[styles.colorPickerItem, isActive && { backgroundColor: colors.activeItemBg }]}
+                    >
+                      <View style={[styles.colorPickerSwatch, { backgroundColor: colorHex }]} />
+                      <Text
+                        style={[
+                          styles.shapePickerItemText,
+                          { color: colors.itemText },
+                          isActive && { color: colors.activeItemText },
+                        ]}
+                      >
+                        {colorOption.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+
+            <Text
+              style={[
+                styles.mainPreview,
+                { color: currentSegment === "shapes" ? shapeColor : colors.mainText },
+                currentSegment === "size" && {
+                  fontSize: SIZE_PREVIEW[selectedIndices.size],
+                  lineHeight: SIZE_PREVIEW[selectedIndices.size] + 12,
+                },
+              ]}
+            >
+              {previewText}
+            </Text>
+
             <Text style={[styles.mainLabel, { color: colors.hintText }]}>{previewLabel}</Text>
-          ) : null}
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={[styles.leftNavigation, { bottom: navigationBottom }]}>
         <Pressable
@@ -315,8 +409,11 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
         onChange={(event) => {
           const nextIndex = event.nativeEvent.selectedSegmentIndex;
           setSegmentIndex(nextIndex);
-          if (nextIndex !== 1) {
+          if (nextIndex !== SEGMENT_OPTIONS.indexOf("size")) {
             setShowShapePicker(false);
+          }
+          if (nextIndex !== SEGMENT_OPTIONS.indexOf("shapes")) {
+            setShowShapeColorPicker(false);
           }
         }}
         backgroundColor="transparent"
@@ -398,6 +495,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 4,
   },
+  colorPickerItem: {
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  colorPickerSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: "#FFFFFF55",
+  },
   shapePickerItemText: {
     fontSize: 14,
     fontWeight: "700",
@@ -407,12 +520,6 @@ const styles = StyleSheet.create({
     fontSize: 94,
     fontWeight: "800",
     lineHeight: 108,
-  },
-  patternPreview: {
-    fontSize: 44,
-    lineHeight: 58,
-    textAlign: "center",
-    paddingHorizontal: 4,
   },
   mainLabel: {
     marginTop: 8,
