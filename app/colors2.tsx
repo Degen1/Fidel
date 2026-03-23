@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { View, Text, Pressable, StyleSheet, PanResponder } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { SIMPLE_COLORS, type ColorItem, type ColorsScreenProps } from "./(tabs)/colors";
+import { SIMPLE_COLORS, type ColorItem, type ColorsScreenProps } from "@/components/colors-screen";
 
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
