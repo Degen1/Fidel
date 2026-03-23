@@ -1,1 +1,1 @@
-export { default } from "./(tabs)/colors";
+export { default } from "@/components/colors-screen";

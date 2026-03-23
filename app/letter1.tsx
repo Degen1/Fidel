@@ -58,6 +58,15 @@ const DARK_COLORS = {
   hintText: "#9CA3AF",
 };
 
+export type Letter1Segment = (typeof SEGMENT_OPTIONS)[number];
+
+type Letter1ScreenProps = {
+  segmentOverride?: Letter1Segment;
+  hideSegmentControl?: boolean;
+  onOverflowBack?: () => void;
+  onOverflowNext?: () => void;
+};
+
 const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
   const value = Array.isArray(segment) ? segment[0] : segment;
 
@@ -66,7 +75,7 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
   }
 
   const normalized = value.toLowerCase();
-  const aliasMap: Record<string, (typeof SEGMENT_OPTIONS)[number]> = {
+  const aliasMap: Record<string, Letter1Segment> = {
     letters: "letters",
     letter: "letters",
     numbers: "numbers",
@@ -82,13 +91,18 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
   return index >= 0 ? index : 0;
 };
 
-export default function IndexScreen() {
+export default function IndexScreen({
+  segmentOverride,
+  hideSegmentControl = false,
+  onOverflowBack,
+  onOverflowNext,
+}: Letter1ScreenProps) {
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [numberPageIndex, setNumberPageIndex] = useState(0);
   const [patternIndex, setPatternIndex] = useState(0);
-  const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(params.segment));
+  const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(segmentOverride ?? params.segment));
   const [showAllLetters, setShowAllLetters] = useState(false);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -104,7 +118,7 @@ export default function IndexScreen() {
   const canGoNextPatterns = patternIndex < PATTERN_ITEMS.length - 1;
   const showBottomNavigation = segmentIndex === 0 || segmentIndex === 1 || segmentIndex === 2;
   const segmentBottom = Math.max(insets.bottom + 8, 14);
-  const navigationBottom = segmentBottom + 56;
+  const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
   const letterButtonTop = insets.top + 12;
   const allLetters = useMemo(() => Array.from(new Set(LETTER_GROUPS.flat())), []);
   const modalScrollOffsetRef = useRef(0);
@@ -119,8 +133,8 @@ export default function IndexScreen() {
   }, [allLetters]);
 
   useEffect(() => {
-    setSegmentIndex(getSegmentIndexFromParam(params.segment));
-  }, [params.segment]);
+    setSegmentIndex(getSegmentIndexFromParam(segmentOverride ?? params.segment));
+  }, [segmentOverride, params.segment]);
 
   useEffect(() => {
     if (segmentIndex !== 0) {
@@ -194,38 +208,66 @@ export default function IndexScreen() {
 
   const handleBack = () => {
     if (segmentIndex === 0) {
-      goToPreviousGroup();
+      if (canGoBack) {
+        goToPreviousGroup();
+        return;
+      }
+
+      onOverflowBack?.();
       return;
     }
 
-    if (segmentIndex === 1 && canGoBackNumbers) {
-      setNumberPageIndex((current) => current - 1);
+    if (segmentIndex === 1) {
+      if (canGoBackNumbers) {
+        setNumberPageIndex((current) => current - 1);
+        return;
+      }
+
+      onOverflowBack?.();
       return;
     }
 
-    if (segmentIndex === 2 && canGoBackPatterns) {
+    if (canGoBackPatterns) {
       setPatternIndex((current) => current - 1);
+      return;
     }
+
+    onOverflowBack?.();
   };
 
   const handleNext = () => {
     if (segmentIndex === 0) {
-      goToNextGroup();
+      if (canGoNext) {
+        goToNextGroup();
+        return;
+      }
+
+      onOverflowNext?.();
       return;
     }
 
-    if (segmentIndex === 1 && canGoNextNumbers) {
-      setNumberPageIndex((current) => current + 1);
+    if (segmentIndex === 1) {
+      if (canGoNextNumbers) {
+        setNumberPageIndex((current) => current + 1);
+        return;
+      }
+
+      onOverflowNext?.();
       return;
     }
 
-    if (segmentIndex === 2 && canGoNextPatterns) {
+    if (canGoNextPatterns) {
       setPatternIndex((current) => current + 1);
+      return;
     }
+
+    onOverflowNext?.();
   };
 
-  const currentCanGoBack = segmentIndex === 0 ? canGoBack : segmentIndex === 1 ? canGoBackNumbers : canGoBackPatterns;
-  const currentCanGoNext = segmentIndex === 0 ? canGoNext : segmentIndex === 1 ? canGoNextNumbers : canGoNextPatterns;
+  const currentCanGoBack =
+    (segmentIndex === 0 ? canGoBack : segmentIndex === 1 ? canGoBackNumbers : canGoBackPatterns) || !!onOverflowBack;
+  const currentCanGoNext =
+    (segmentIndex === 0 ? canGoNext : segmentIndex === 1 ? canGoNextNumbers : canGoNextPatterns) || !!onOverflowNext;
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.screenBg }]} edges={[]}>
@@ -363,14 +405,16 @@ export default function IndexScreen() {
         </View>
       ) : null}
 
-      <SegmentedControl
-        values={SEGMENT_OPTIONS}
-        selectedIndex={segmentIndex}
-        onChange={(event) => setSegmentIndex(event.nativeEvent.selectedSegmentIndex)}
-        backgroundColor="transparent"
-        tintColor={colors.activeItemBg}
-        style={[styles.bottomSegment, { bottom: segmentBottom }]}
-      />
+      {!hideSegmentControl ? (
+        <SegmentedControl
+          values={SEGMENT_OPTIONS}
+          selectedIndex={segmentIndex}
+          onChange={(event) => setSegmentIndex(event.nativeEvent.selectedSegmentIndex)}
+          backgroundColor="transparent"
+          tintColor={colors.activeItemBg}
+          style={[styles.bottomSegment, { bottom: segmentBottom }]}
+        />
+      ) : null}
 
       <Modal
         transparent

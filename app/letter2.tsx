@@ -7,10 +7,11 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import ColorsOne from "./colors1";
 import ColorsTwo from "./colors2";
 import ColorsThree from "./colors3";
-import { SIMPLE_COLORS, type ColorItem } from "./(tabs)/colors";
+import { SIMPLE_COLORS, type ColorItem } from "@/components/colors-screen";
 
 type SegmentKey = "colors" | "shapes" | "size";
 type NonColorSegmentKey = "shapes" | "size";
+export type Letter2Segment = SegmentKey;
 
 type Item = {
   label: string;
@@ -22,6 +23,10 @@ type Letter2Variant = "pre-k" | "first-grade";
 
 type Letter2ScreenProps = {
   variant?: Letter2Variant;
+  segmentOverride?: SegmentKey;
+  hideSegmentControl?: boolean;
+  onOverflowBack?: () => void;
+  onOverflowNext?: () => void;
 };
 
 const SEGMENT_OPTIONS: SegmentKey[] = ["colors", "shapes", "size"];
@@ -101,9 +106,15 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
   return index >= 0 ? index : 0;
 };
 
-export default function Letter2Screen({ variant = "first-grade" }: Letter2ScreenProps) {
+export default function Letter2Screen({
+  variant = "first-grade",
+  segmentOverride,
+  hideSegmentControl = false,
+  onOverflowBack,
+  onOverflowNext,
+}: Letter2ScreenProps) {
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
-  const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(params.segment));
+  const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(segmentOverride ?? params.segment));
   const [showShapePicker, setShowShapePicker] = useState(false);
   const [showShapeColorPicker, setShowShapeColorPicker] = useState(false);
   const [selectedShapeColorValue, setSelectedShapeColorValue] = useState<string | null>(null);
@@ -127,8 +138,8 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   );
 
   useEffect(() => {
-    setSegmentIndex(getSegmentIndexFromParam(params.segment));
-  }, [params.segment]);
+    setSegmentIndex(getSegmentIndexFromParam(segmentOverride ?? params.segment));
+  }, [segmentOverride, params.segment]);
 
   const currentSegment = SEGMENT_OPTIONS[segmentIndex];
   const currentNonColorSegment: NonColorSegmentKey = currentSegment === "size" ? "size" : "shapes";
@@ -138,7 +149,7 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   const selectedShape = shapeItems[selectedIndices.shapes];
   const selectedSize = SIZE_ITEMS[selectedIndices.size];
   const segmentBottom = Math.max(insets.bottom + 8, 14);
-  const navigationBottom = segmentBottom + 56;
+  const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
   const plusTop = insets.top + 12;
   const pickerTop = plusTop + 50;
   const shapeColor = selectedShapeColorValue ?? colors.mainText;
@@ -149,8 +160,10 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   const canGoNextColors = colorPageIndex < COLOR_TABS.length - 1 && (colorPageIndex !== 1 || hasCompletedTwoColorMixes);
   const canGoBackItems = currentIndex > 0;
   const canGoNextItems = currentIndex < currentItems.length - 1;
-  const canGoBack = currentSegment === "colors" ? canGoBackColors : canGoBackItems;
-  const canGoNext = currentSegment === "colors" ? canGoNextColors : canGoNextItems;
+  const canGoBackWithinSegment = currentSegment === "colors" ? canGoBackColors : canGoBackItems;
+  const canGoNextWithinSegment = currentSegment === "colors" ? canGoNextColors : canGoNextItems;
+  const canGoBack = canGoBackWithinSegment || !!onOverflowBack;
+  const canGoNext = canGoNextWithinSegment || !!onOverflowNext;
 
   const handleAddBaseMixedColor = useCallback((nextColor: ColorItem) => {
     setBaseMixedColors((current) => {
@@ -171,7 +184,8 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   };
 
   const goBack = () => {
-    if (!canGoBack) {
+    if (!canGoBackWithinSegment) {
+      onOverflowBack?.();
       return;
     }
 
@@ -184,7 +198,8 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
   };
 
   const goNext = () => {
-    if (!canGoNext) {
+    if (!canGoNextWithinSegment) {
+      onOverflowNext?.();
       return;
     }
 
@@ -403,23 +418,25 @@ export default function Letter2Screen({ variant = "first-grade" }: Letter2Screen
         </Pressable>
       </View>
 
-      <SegmentedControl
-        values={SEGMENT_LABELS}
-        selectedIndex={segmentIndex}
-        onChange={(event) => {
-          const nextIndex = event.nativeEvent.selectedSegmentIndex;
-          setSegmentIndex(nextIndex);
-          if (nextIndex !== SEGMENT_OPTIONS.indexOf("size")) {
-            setShowShapePicker(false);
-          }
-          if (nextIndex !== SEGMENT_OPTIONS.indexOf("shapes")) {
-            setShowShapeColorPicker(false);
-          }
-        }}
-        backgroundColor="transparent"
-        tintColor={colors.activeItemBg}
-        style={[styles.bottomSegment, { bottom: segmentBottom }]}
-      />
+      {!hideSegmentControl ? (
+        <SegmentedControl
+          values={SEGMENT_LABELS}
+          selectedIndex={segmentIndex}
+          onChange={(event) => {
+            const nextIndex = event.nativeEvent.selectedSegmentIndex;
+            setSegmentIndex(nextIndex);
+            if (nextIndex !== SEGMENT_OPTIONS.indexOf("size")) {
+              setShowShapePicker(false);
+            }
+            if (nextIndex !== SEGMENT_OPTIONS.indexOf("shapes")) {
+              setShowShapeColorPicker(false);
+            }
+          }}
+          backgroundColor="transparent"
+          tintColor={colors.activeItemBg}
+          style={[styles.bottomSegment, { bottom: segmentBottom }]}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
