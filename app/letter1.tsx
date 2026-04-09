@@ -63,6 +63,7 @@ export type Letter1Segment = (typeof SEGMENT_OPTIONS)[number];
 type Letter1ScreenProps = {
   segmentOverride?: Letter1Segment;
   hideSegmentControl?: boolean;
+  extraBottomInset?: number;
   onOverflowBack?: () => void;
   onOverflowNext?: () => void;
 };
@@ -94,6 +95,7 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
 export default function IndexScreen({
   segmentOverride,
   hideSegmentControl = false,
+  extraBottomInset = 0,
   onOverflowBack,
   onOverflowNext,
 }: Letter1ScreenProps) {
@@ -117,7 +119,7 @@ export default function IndexScreen({
   const canGoBackPatterns = patternIndex > 0;
   const canGoNextPatterns = patternIndex < PATTERN_ITEMS.length - 1;
   const showBottomNavigation = segmentIndex === 0 || segmentIndex === 1 || segmentIndex === 2;
-  const segmentBottom = Math.max(insets.bottom + 8, 14);
+  const segmentBottom = Math.max(insets.bottom + 8, 14) + extraBottomInset;
   const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
   const letterButtonTop = insets.top + 12;
   const allLetters = useMemo(() => Array.from(new Set(LETTER_GROUPS.flat())), []);
