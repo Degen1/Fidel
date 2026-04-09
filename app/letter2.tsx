@@ -25,6 +25,7 @@ type Letter2ScreenProps = {
   variant?: Letter2Variant;
   segmentOverride?: SegmentKey;
   hideSegmentControl?: boolean;
+  extraBottomInset?: number;
   onOverflowBack?: () => void;
   onOverflowNext?: () => void;
 };
@@ -110,6 +111,7 @@ export default function Letter2Screen({
   variant = "first-grade",
   segmentOverride,
   hideSegmentControl = false,
+  extraBottomInset = 0,
   onOverflowBack,
   onOverflowNext,
 }: Letter2ScreenProps) {
@@ -148,7 +150,7 @@ export default function Letter2Screen({
   const currentItem = currentItems[currentIndex];
   const selectedShape = shapeItems[selectedIndices.shapes];
   const selectedSize = SIZE_ITEMS[selectedIndices.size];
-  const segmentBottom = Math.max(insets.bottom + 8, 14);
+  const segmentBottom = Math.max(insets.bottom + 8, 14) + extraBottomInset;
   const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
   const plusTop = insets.top + 12;
   const pickerTop = plusTop + 50;

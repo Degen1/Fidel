@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { View, StyleSheet, Text, Pressable, Image, ScrollView, PanResponder } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 const SUBJECT_TABS = ["class", "games", "tests"] as const;
+const SUBJECT_TAB_LABELS = ["ክድሊ", "ጸወታ", "ፈተና"] as const;
 type SubjectTab = (typeof SUBJECT_TABS)[number];
 const SWIPE_DISTANCE_THRESHOLD = 40;
 const SWIPE_VELOCITY_THRESHOLD = 0.35;
@@ -36,15 +37,12 @@ const APP_SECTIONS = {
   class: {
     title: "Class",
     apps: [
-      { name: "Pre-K 1", href: "/letters1", image: require("../../assets/images/prek1.png") },
-      { name: "Pre-K 2", href: "/prek2", image: require("../../assets/images/prek1.png") },
-      { name: "Pre-K 3", href: "/letters1", image: require("../../assets/images/icon.png") },
-      { name: "first grade 1", href: "/letters1", image: require("../../assets/images/icon.png") },
-      { name: "first grade 2", href: "/letters2", image: require("../../assets/images/icon.png") },
-      { name: "first grade 3", href: "/letters6", image: require("../../assets/images/icon.png") },
-      { name: "second grade 1", href: "/letters7", image: require("../../assets/images/icon.png") },
-      { name: "second grade 2", href: "/letters8", image: require("../../assets/images/icon.png") },
-      { name: "second grade 3", href: "/letters9", image: require("../../assets/images/icon.png") },
+      { name: "ፊደል፣ቁጽሪ፣ምድጋም", href: "/letters1", image: require("../../assets/images/prek1.png") },
+      { name: "ሕብሪ፣ቅርጺ፣ግጅፊ", href: "/prek2", image: require("../../assets/images/prek2.png") },
+      { name: "ቁጽሪ", href: "/letters1", image: require("../../assets/images/first1.png") },
+      { name: "ትግሪኛ", href: "/letters2", image: require("../../assets/images/first2.png") },
+      { name: "ኢንግሊሽ", href: "/letters6", image: require("../../assets/images/first3.png") },
+      { name: "ስነ ፍልጠት", href: "/letters3", image: require("../../assets/images/first4.png") },
     ],
   },
   games: {
@@ -61,12 +59,12 @@ const APP_SECTIONS = {
   tests: {
     title: "Tests",
     apps: [
-      { name: "colors1", href: "/colors1", image: require("../../assets/images/icon.png") },
-      { name: "colors2", href: "/colors2", image: require("../../assets/images/icon.png") },
-      { name: "colors3", href: "/colors3", image: require("../../assets/images/icon.png") },
-      { name: "colors4", href: "/colors1", image: require("../../assets/images/icon.png") },
-      { name: "colors5", href: "/colors2", image: require("../../assets/images/icon.png") },
-      { name: "colors6", href: "/colors3", image: require("../../assets/images/icon.png") },
+      { name: "ፈተና1", href: "/colors1", image: require("../../assets/images/game1.png") },
+      { name: "ፈተና2", href: "/colors2", image: require("../../assets/images/game2.png") },
+      { name: "ፈተና3", href: "/colors3", image: require("../../assets/images/game3.png") },
+      { name: "ፈተና4", href: "/colors1", image: require("../../assets/images/game4.png") },
+      { name: "ፈተና5", href: "/colors2", image: require("../../assets/images/game5.png") },
+      { name: "ፈተና6", href: "/colors3", image: require("../../assets/images/game6.png") },
     ],
   },
 } as const;
@@ -86,6 +84,7 @@ export default function NumbersScreen() {
   const colorScheme = useColorScheme();
   const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(params.segment));
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const isDark = colorScheme === "dark";
 
   useEffect(() => {
@@ -95,23 +94,22 @@ export default function NumbersScreen() {
   const backgroundColor = isDark ? "#111827" : "#F3F4F6";
   const cardColor = isDark ? "#1F2937" : "#E5E7EB";
   const textColor = isDark ? "#F9FAFB" : "#111827";
+  const contentBottomPadding = Math.max(insets.bottom + 84, 104);
   const selectedKey = SUBJECT_TABS[segmentIndex] as keyof typeof APP_SECTIONS;
   const selectedSection = APP_SECTIONS[selectedKey];
   const isClassSection = selectedKey === "class";
   const gradeApps = useMemo(() => {
     if (isClassSection) {
-      const preK = selectedSection.apps.slice(0, 3);
-      const firstGrade = selectedSection.apps.slice(3, 6);
-      const secondGrade = selectedSection.apps.slice(6, 9);
+      const preK = selectedSection.apps.slice(0, 2);
+      const firstGrade = selectedSection.apps.slice(2, 6);
 
-      return { preK, firstGrade, secondGrade };
+      return { preK, firstGrade };
     }
 
-    // For Games/Tests, show all 6 apps in each grade block (3 columns x 2 rows).
+    // For Games/Tests, show all 6 apps in each visible grade block.
     return {
       preK: selectedSection.apps,
       firstGrade: selectedSection.apps,
-      secondGrade: selectedSection.apps,
     };
   }, [isClassSection, selectedSection.apps]);
 
@@ -190,7 +188,7 @@ export default function NumbersScreen() {
     >
       <View style={styles.segmentedControlContainer}>
         <SegmentedControl
-          values={SUBJECT_TABS}
+          values={SUBJECT_TAB_LABELS}
           selectedIndex={segmentIndex}
           onChange={(event) => setSegmentIndex(event.nativeEvent.selectedSegmentIndex)}
           style={styles.segmentedControl}
@@ -199,28 +197,22 @@ export default function NumbersScreen() {
 
       <ScrollView
         style={styles.contentContainer}
-        contentContainerStyle={styles.contentContainerInner}
+        contentContainerStyle={[styles.contentContainerInner, { paddingBottom: contentBottomPadding }]}
+        scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         showsVerticalScrollIndicator={false}
       >
         <>
-          <Text style={[styles.sectionTitle, { color: textColor }]}>{selectedSection.title}</Text>
-          <Text style={[styles.groupTitle, { color: textColor }]}>Pre-K</Text>
+          <Text style={[styles.groupTitle, { color: textColor }]}>ቅድሚ ቀዳማይ ክፍሊ</Text>
           <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
             {isClassSection
               ? gradeApps.preK.map((app) => renderAppCard(app, `${selectedKey}-prek`))
               : renderThreeColumnRows(gradeApps.preK, `${selectedKey}-prek`)}
           </View>
-          <Text style={[styles.groupTitle, { color: textColor }]}>First Grade</Text>
+          <Text style={[styles.groupTitle, { color: textColor }]}>ቀዳማይ ክፍሊ</Text>
           <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
             {isClassSection
               ? gradeApps.firstGrade.map((app) => renderAppCard(app, `${selectedKey}-first`))
               : renderThreeColumnRows(gradeApps.firstGrade, `${selectedKey}-first`)}
-          </View>
-          <Text style={[styles.groupTitle, { color: textColor }]}>Second Grade</Text>
-          <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
-            {isClassSection
-              ? gradeApps.secondGrade.map((app) => renderAppCard(app, `${selectedKey}-second`))
-              : renderThreeColumnRows(gradeApps.secondGrade, `${selectedKey}-second`)}
           </View>
         </>
       </ScrollView>
@@ -247,11 +239,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 12,
   },
   groupTitle: {
     fontSize: 18,
@@ -294,7 +281,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   letterImageContainer: {
-    aspectRatio: 2,
+    aspectRatio: 16 / 9,
   },
   appImage: {
     width: "100%",
