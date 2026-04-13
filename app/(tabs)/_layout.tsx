@@ -18,11 +18,7 @@ export default function TabLayout() {
             drawable="ic_menu_manage" />
           </NativeTabs.Trigger>
 
-          <NativeTabs.Trigger name="others">
-           <Label>ሕብሪ</Label>
-            <Icon sf={"paintpalette.fill"} 
-            drawable="ic_menu_manage" />
-          </NativeTabs.Trigger>
+        
 
           <NativeTabs.Trigger name="settings">
           <Label>መማረጺ</Label>
