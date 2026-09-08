@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, StyleSheet, Pressable, PanResponder } from "react-native";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -24,14 +23,12 @@ type Letter2Variant = "pre-k" | "first-grade";
 type Letter2ScreenProps = {
   variant?: Letter2Variant;
   segmentOverride?: SegmentKey;
-  hideSegmentControl?: boolean;
   extraBottomInset?: number;
   onOverflowBack?: () => void;
   onOverflowNext?: () => void;
 };
 
 const SEGMENT_OPTIONS: SegmentKey[] = ["colors", "shapes", "size"];
-const SEGMENT_LABELS = ["colors", "shapes", "size"];
 const COLOR_TABS = [ColorsOne, ColorsTwo, ColorsThree];
 const REQUIRED_TWO_COLOR_MIXES = 3;
 const SWIPE_UP_THRESHOLD = -40;
@@ -110,7 +107,6 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
 export default function Letter2Screen({
   variant = "first-grade",
   segmentOverride,
-  hideSegmentControl = false,
   extraBottomInset = 0,
   onOverflowBack,
   onOverflowNext,
@@ -151,7 +147,7 @@ export default function Letter2Screen({
   const selectedShape = shapeItems[selectedIndices.shapes];
   const selectedSize = SIZE_ITEMS[selectedIndices.size];
   const segmentBottom = Math.max(insets.bottom + 8, 14) + extraBottomInset;
-  const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
+  const navigationBottom = segmentBottom;
   const plusTop = insets.top + 12;
   const pickerTop = plusTop + 50;
   const shapeColor = selectedShapeColorValue ?? colors.mainText;
@@ -420,25 +416,6 @@ export default function Letter2Screen({
         </Pressable>
       </View>
 
-      {!hideSegmentControl ? (
-        <SegmentedControl
-          values={SEGMENT_LABELS}
-          selectedIndex={segmentIndex}
-          onChange={(event) => {
-            const nextIndex = event.nativeEvent.selectedSegmentIndex;
-            setSegmentIndex(nextIndex);
-            if (nextIndex !== SEGMENT_OPTIONS.indexOf("size")) {
-              setShowShapePicker(false);
-            }
-            if (nextIndex !== SEGMENT_OPTIONS.indexOf("shapes")) {
-              setShowShapeColorPicker(false);
-            }
-          }}
-          backgroundColor="transparent"
-          tintColor={colors.activeItemBg}
-          style={[styles.bottomSegment, { bottom: segmentBottom }]}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }
@@ -565,13 +542,5 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     lineHeight: 26,
-  },
-  bottomSegment: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    height: 46,
-    backgroundColor: "transparent",
-    zIndex: 20,
   },
 });
