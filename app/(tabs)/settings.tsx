@@ -15,7 +15,7 @@ export default function SettingsScreen() {
   const handleThemeChange = (index: number) => {
     setThemeIndex(index);
     const selectedMode = THEME_MODES[index];
-    Appearance.setColorScheme(selectedMode === 'system' ? null : selectedMode);
+    Appearance.setColorScheme(selectedMode === 'system' ? 'unspecified' : selectedMode);
   };
 
   return (

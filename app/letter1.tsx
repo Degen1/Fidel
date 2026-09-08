@@ -1,44 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Pressable, Modal, ScrollView } from "react-native";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { TIGRINYA_LETTER_GROUPS } from "@/constants/tigrinya-alphabet";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import NumbersOne from "./numbers1";
 import NumbersTwo from "./numbers2";
 import NumbersThree from "./numbers3";
 
-const LETTER_GROUPS = [
-  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],
-  ["በ", "ቡ", "ቢ", "ባ", "ቤ", "ብ", "ቦ"],
-  ["ሰ", "ሱ", "ሲ", "ሳ", "ሴ", "ስ", "ሶ"],
-  ["ሸ", "ሹ", "ሺ", "ሻ", "ሼ", "ሽ", "ሾ"],
-  ["ዐ", "ዑ", "ዒ", "ዓ", "ዔ", "ዕ", "ዖ"],
-  ["ወ", "ዉ", "ዊ", "ዋ", "ዌ", "ው", "ዎ"],
-  ["መ", "ሙ", "ሚ", "ማ", "ሜ", "ም", "ሞ"],
-  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-  ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
-
-];
+const LETTER_GROUPS = TIGRINYA_LETTER_GROUPS;
 const PATTERN_ITEMS = ["11", "12", "ሀሀ", "ሀ ሁ"];
 const SEGMENT_OPTIONS = ["letters", "numbers", "patterns"];
 const NUMBER_TABS = [NumbersOne, NumbersTwo, NumbersThree];
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
-const MODAL_CLOSE_SWIPE_THRESHOLD = 56;
-const LETTERS_PER_ROW = 7;
-const MODAL_ROW_COLORS = [
-  "#F7E7CF",
-  "#D8E8F8",
-  "#D6ECDD",
-  "#F2DDDD",
-  "#E5DDF0",
-  "#F7E7CF",
-  "#D8E8F8",
-  "#D6ECDD",
-];
 const LIGHT_COLORS = {
   screenBg: "#F3F4F6",
   columnBg: "#E5E7EB",
@@ -62,7 +37,6 @@ export type Letter1Segment = (typeof SEGMENT_OPTIONS)[number];
 
 type Letter1ScreenProps = {
   segmentOverride?: Letter1Segment;
-  hideSegmentControl?: boolean;
   extraBottomInset?: number;
   onOverflowBack?: () => void;
   onOverflowNext?: () => void;
@@ -94,18 +68,17 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
 
 export default function IndexScreen({
   segmentOverride,
-  hideSegmentControl = false,
   extraBottomInset = 0,
   onOverflowBack,
   onOverflowNext,
 }: Letter1ScreenProps) {
   const params = useLocalSearchParams<{ segment?: string | string[] }>();
+  const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeGroupIndex, setActiveGroupIndex] = useState(0);
   const [numberPageIndex, setNumberPageIndex] = useState(0);
   const [patternIndex, setPatternIndex] = useState(0);
   const [segmentIndex, setSegmentIndex] = useState(() => getSegmentIndexFromParam(segmentOverride ?? params.segment));
-  const [showAllLetters, setShowAllLetters] = useState(false);
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
@@ -120,29 +93,12 @@ export default function IndexScreen({
   const canGoNextPatterns = patternIndex < PATTERN_ITEMS.length - 1;
   const showBottomNavigation = segmentIndex === 0 || segmentIndex === 1 || segmentIndex === 2;
   const segmentBottom = Math.max(insets.bottom + 8, 14) + extraBottomInset;
-  const navigationBottom = hideSegmentControl ? segmentBottom : segmentBottom + 56;
+  const navigationBottom = segmentBottom;
   const letterButtonTop = insets.top + 12;
-  const allLetters = useMemo(() => Array.from(new Set(LETTER_GROUPS.flat())), []);
-  const modalScrollOffsetRef = useRef(0);
-  const allLetterRows = useMemo(() => {
-    const rows: string[][] = [];
-
-    for (let index = 0; index < allLetters.length; index += LETTERS_PER_ROW) {
-      rows.push(allLetters.slice(index, index + LETTERS_PER_ROW));
-    }
-
-    return rows;
-  }, [allLetters]);
 
   useEffect(() => {
     setSegmentIndex(getSegmentIndexFromParam(segmentOverride ?? params.segment));
   }, [segmentOverride, params.segment]);
-
-  useEffect(() => {
-    if (segmentIndex !== 0) {
-      setShowAllLetters(false);
-    }
-  }, [segmentIndex]);
 
   const goToPreviousGroup = () => {
     if (!canGoBack) {
@@ -185,24 +141,6 @@ export default function IndexScreen({
           setPatternIndex((current) => (current + 1) % PATTERN_ITEMS.length);
         } else if (gestureState.dy > SWIPE_DOWN_THRESHOLD) {
           setPatternIndex((current) => (current - 1 + PATTERN_ITEMS.length) % PATTERN_ITEMS.length);
-        }
-      },
-    }),
-  ).current;
-
-  const modalPanResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponderCapture: (_, gestureState) =>
-        gestureState.dy > 8 &&
-        Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
-        modalScrollOffsetRef.current <= 0,
-      onMoveShouldSetPanResponder: (_, gestureState) =>
-        gestureState.dy > 8 &&
-        Math.abs(gestureState.dy) > Math.abs(gestureState.dx) &&
-        modalScrollOffsetRef.current <= 0,
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > MODAL_CLOSE_SWIPE_THRESHOLD || gestureState.vy > 0.75) {
-          setShowAllLetters(false);
         }
       },
     }),
@@ -309,7 +247,9 @@ export default function IndexScreen({
 
             <View style={styles.mainArea}>
               <Pressable
-                onPress={() => setShowAllLetters(true)}
+                onPress={() => router.push("/all-letters")}
+                accessibilityRole="button"
+                accessibilityLabel="ኩሎም ፊደላት ክፈት"
                 style={[
                   styles.fiCircleButton,
                   {
@@ -407,65 +347,6 @@ export default function IndexScreen({
         </View>
       ) : null}
 
-      {!hideSegmentControl ? (
-        <SegmentedControl
-          values={SEGMENT_OPTIONS}
-          selectedIndex={segmentIndex}
-          onChange={(event) => setSegmentIndex(event.nativeEvent.selectedSegmentIndex)}
-          backgroundColor="transparent"
-          tintColor={colors.activeItemBg}
-          style={[styles.bottomSegment, { bottom: segmentBottom }]}
-        />
-      ) : null}
-
-      <Modal
-        transparent
-        animationType="slide"
-        visible={showAllLetters}
-        onRequestClose={() => setShowAllLetters(false)}
-      >
-        <View style={styles.fullScreenModal}>
-          <View
-            style={[
-              styles.modalContentContainer,
-              {
-                backgroundColor: colors.columnBg,
-                paddingBottom: Math.max(insets.bottom + 10, 16),
-              },
-            ]}
-            {...modalPanResponder.panHandlers}
-          >
-            <View style={styles.modalHandleArea}>
-              <View style={[styles.modalSwipeHandle, { backgroundColor: colors.hintText }]} />
-            </View>
-            <Text style={[styles.modalTitle, { color: colors.mainText }]}>ኩሎም ፊደላት</Text>
-            <ScrollView
-              style={styles.lettersGrid}
-              contentContainerStyle={styles.lettersGridContent}
-              showsVerticalScrollIndicator={false}
-              onScroll={(event) => {
-                modalScrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-              }}
-              scrollEventThrottle={16}
-            >
-              {allLetterRows.map((row, rowIndex) => (
-                <View
-                  key={`letters-row-${rowIndex}`}
-                  style={[styles.lettersRowCard, { backgroundColor: MODAL_ROW_COLORS[rowIndex % MODAL_ROW_COLORS.length] }]}
-                >
-                  <View style={styles.lettersRow}>
-                    {row.map((letter) => (
-                      <View key={`${rowIndex}-${letter}`} style={styles.modalLetterCell}>
-                        <Text style={[styles.modalLetterText, { color: colors.mainText }]}>{letter}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -573,81 +454,5 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "700",
     lineHeight: 26,
-  },
-  bottomSegment: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    height: 46,
-    backgroundColor: "transparent",
-    zIndex: 20,
-  },
-  fullScreenModal: {
-    flex: 1,
-    alignItems: "stretch",
-    justifyContent: "flex-end",
-    backgroundColor: "transparent",
-  },
-  modalSwipeHandle: {
-    alignSelf: "center",
-    width: 48,
-    height: 6,
-    borderRadius: 3,
-  },
-  modalHandleArea: {
-    width: "100%",
-    paddingTop: 2,
-    paddingBottom: 10,
-    alignItems: "center",
-  },
-  modalContentContainer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100%",
-    height: "80%",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    alignItems: "center",
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 10,
-  },
-  lettersGrid: {
-    flex: 1,
-    width: "100%",
-  },
-  lettersGridContent: {
-    paddingTop: 4,
-    paddingBottom: 6,
-  },
-  lettersRowCard: {
-    width: "100%",
-    borderRadius: 16,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 8,
-  },
-  lettersRow: {
-    flexDirection: "row",
-  },
-  modalLetterCell: {
-    flex: 1,
-    marginHorizontal: 3,
-    aspectRatio: 1,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  modalLetterText: {
-    fontSize: 34,
-    fontWeight: "800",
-    lineHeight: 40,
   },
 });

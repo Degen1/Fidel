@@ -1,17 +1,25 @@
 import { useMemo } from "react";
-import { View, StyleSheet, Text, Pressable, Image, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { View, StyleSheet, Text, Pressable, Image, ScrollView, useWindowDimensions } from "react-native";
+import { useRouter, type Href } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
 export type SubjectSectionKey = "class" | "games" | "tests";
 
+const GRID_HORIZONTAL_PADDING = 16;
+const GRID_GUTTER = 16;
+const GRID_COLUMNS = 3;
+
 const APP_SECTIONS = {
   class: {
     apps: [
-      { name: "ፊደል፣ቁጽሪ፣ምድጋም", href: "/letters1", image: require("../assets/images/prek1.png") },
-      { name: "ሕብሪ፣ቅርጺ፣ግጅፊ", href: "/prek2", image: require("../assets/images/prek2.png") },
+      { name: "ፊደል", href: "/letters1?segment=letters", image: require("../assets/images/prek1.png") },
+      { name: "ቁጽሪ", href: "/letters1?segment=numbers", image: require("../assets/images/prek1.png") },
+      { name: "ምድጋም", href: "/letters1?segment=patterns", image: require("../assets/images/prek1.png") },
+      { name: "ሕብሪ", href: "/prek2?segment=colors", image: require("../assets/images/prek2.png") },
+      { name: "ቅርጺ", href: "/prek2?segment=shapes", image: require("../assets/images/prek2.png") },
+      { name: "ግዝፊ", href: "/prek2?segment=size", image: require("../assets/images/prek2.png") },
       { name: "ቁጽሪ", href: "/letters1", image: require("../assets/images/first1.png") },
       { name: "ትግሪኛ", href: "/letters2", image: require("../assets/images/first2.png") },
       { name: "ኢንግሊሽ", href: "/letters6", image: require("../assets/images/first3.png") },
@@ -60,18 +68,24 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
   const colorScheme = useColorScheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
   const isDark = colorScheme === "dark";
 
   const backgroundColor = isDark ? "#111827" : "#F3F4F6";
   const cardColor = isDark ? "#1F2937" : "#E5E7EB";
   const textColor = isDark ? "#F9FAFB" : "#111827";
+  const secondaryTextColor = isDark ? "#CBD5E1" : "#555555";
   const contentBottomPadding = Math.max(insets.bottom + 84, 104);
   const selectedSection = APP_SECTIONS[sectionKey];
   const isClassSection = sectionKey === "class";
+  const bookWidth =
+    (screenWidth - GRID_HORIZONTAL_PADDING * 2 - GRID_GUTTER * (GRID_COLUMNS - 1)) /
+    GRID_COLUMNS;
+  const bookCoverHeight = bookWidth * 1.6;
   const gradeApps = useMemo(() => {
     if (isClassSection) {
-      const preK = selectedSection.apps.slice(0, 2);
-      const firstGrade = selectedSection.apps.slice(2, 6);
+      const preK = selectedSection.apps.slice(0, 6);
+      const firstGrade = selectedSection.apps.slice(6, 10);
 
       return { preK, firstGrade };
     }
@@ -85,20 +99,51 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
   const renderAppCard = (app: AppItem, keyPrefix: string) => (
     <Pressable
       key={`${keyPrefix}-${app.name}`}
-      onPress={() => router.push(app.href)}
-      style={[styles.appCard, isClassSection && styles.letterAppCard]}
+      onPress={() => router.push(app.href as Href)}
+      accessibilityRole="button"
+      accessibilityLabel={app.name}
+      style={({ pressed }) => [
+        styles.appCard,
+        isClassSection && { width: bookWidth },
+        pressed && styles.appCardPressed,
+      ]}
     >
-      <View
-        style={[
-          styles.appImageContainer,
-          { backgroundColor: cardColor },
-          isClassSection && styles.letterImageContainer,
-        ]}
-      >
-        <Image source={app.image} style={styles.appImage} resizeMode="cover" />
-      </View>
-
-      <Text style={[styles.appCardText, { color: textColor }]}>{app.name}</Text>
+      {isClassSection ? (
+        <View
+          style={[
+            styles.book,
+            {
+              width: bookWidth,
+              height: bookCoverHeight + 20,
+              backgroundColor,
+            },
+          ]}
+        >
+          <Image
+            source={app.image}
+            style={{
+              width: bookWidth,
+              height: bookCoverHeight,
+              borderRadius: 8,
+            }}
+            resizeMode="cover"
+          />
+          <View style={styles.bookCaption}>
+            <Text numberOfLines={2} style={[styles.bookTitle, { color: secondaryTextColor }]}>
+              {app.name}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <View style={[styles.appImageContainer, { backgroundColor: cardColor }]}>
+            <Image source={app.image} style={styles.appImage} resizeMode="cover" />
+          </View>
+          <Text numberOfLines={2} style={[styles.appCardText, { color: textColor }]}>
+            {app.name}
+          </Text>
+        </>
+      )}
     </Pressable>
   );
 
@@ -111,11 +156,18 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
     return rows.map((rowApps, rowIndex) => (
       <View
         key={`${groupKey}-row-${rowIndex}`}
-        style={[styles.appsRow, rowIndex === rows.length - 1 && styles.appsRowLast]}
+        style={[
+          styles.appsRow,
+          isClassSection && styles.bookRow,
+          rowIndex === rows.length - 1 && styles.appsRowLast,
+        ]}
       >
         {rowApps.map((app) => renderAppCard(app, `${groupKey}-r${rowIndex}`))}
         {Array.from({ length: Math.max(0, 3 - rowApps.length) }).map((_, spacerIndex) => (
-          <View key={`${groupKey}-spacer-${rowIndex}-${spacerIndex}`} style={styles.appCardSpacer} />
+          <View
+            key={`${groupKey}-spacer-${rowIndex}-${spacerIndex}`}
+            style={[styles.appCardSpacer, isClassSection && { width: bookWidth }]}
+          />
         ))}
       </View>
     ));
@@ -125,21 +177,25 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
     <SafeAreaView style={[styles.root, { backgroundColor }]} edges={["top"]}>
       <ScrollView
         style={styles.contentContainer}
-        contentContainerStyle={[styles.contentContainerInner, { paddingBottom: contentBottomPadding }]}
+        contentContainerStyle={[
+          styles.contentContainerInner,
+          isClassSection && styles.bookContent,
+          { paddingBottom: contentBottomPadding },
+        ]}
         scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.groupTitle, { color: textColor }]}>ቅድሚ ቀዳማይ ክፍሊ</Text>
-        <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
-          {isClassSection
-            ? gradeApps.preK.map((app) => renderAppCard(app, `${sectionKey}-prek`))
-            : renderThreeColumnRows(gradeApps.preK, `${sectionKey}-prek`)}
+        <Text style={[styles.groupTitle, isClassSection && styles.bookGroupTitle, { color: textColor }]}>
+          ቅድሚ ቀዳማይ ክፍሊ
+        </Text>
+        <View style={styles.appsGrid}>
+          {renderThreeColumnRows(gradeApps.preK, `${sectionKey}-prek`)}
         </View>
-        <Text style={[styles.groupTitle, { color: textColor }]}>ቀዳማይ ክፍሊ</Text>
-        <View style={[styles.appsGrid, isClassSection && styles.lettersAppsList]}>
-          {isClassSection
-            ? gradeApps.firstGrade.map((app) => renderAppCard(app, `${sectionKey}-first`))
-            : renderThreeColumnRows(gradeApps.firstGrade, `${sectionKey}-first`)}
+        <Text style={[styles.groupTitle, isClassSection && styles.bookGroupTitle, { color: textColor }]}>
+          ቀዳማይ ክፍሊ
+        </Text>
+        <View style={styles.appsGrid}>
+          {renderThreeColumnRows(gradeApps.firstGrade, `${sectionKey}-first`)}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -158,11 +214,21 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 24,
   },
+  bookContent: {
+    paddingHorizontal: GRID_HORIZONTAL_PADDING,
+    paddingTop: GRID_HORIZONTAL_PADDING,
+  },
   groupTitle: {
     fontSize: 18,
     fontWeight: "700",
     marginBottom: 10,
     marginTop: 4,
+  },
+  bookGroupTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 14,
+    marginTop: 6,
   },
   appsGrid: {
     width: "100%",
@@ -172,25 +238,30 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 10,
   },
+  bookRow: {
+    marginBottom: GRID_GUTTER,
+  },
   appsRowLast: {
     marginBottom: 0,
   },
-  lettersAppsList: {
-    flexDirection: "column",
-    flexWrap: "nowrap",
-    justifyContent: "flex-start",
-  },
   appCard: {
     width: "32%",
-    marginBottom: 10,
     alignItems: "center",
+  },
+  appCardPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.97 }],
   },
   appCardSpacer: {
     width: "32%",
   },
-  letterAppCard: {
-    width: "100%",
-    marginBottom: 12,
+  book: {
+    alignItems: "center",
+  },
+  bookCaption: {
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   appImageContainer: {
     width: "100%",
@@ -198,12 +269,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
   },
-  letterImageContainer: {
-    aspectRatio: 16 / 9,
-  },
   appImage: {
     width: "100%",
     height: "100%",
+  },
+  bookTitle: {
+    fontSize: 14,
+    lineHeight: 16,
+    fontWeight: "600",
+    textAlign: "center",
   },
   appCardText: {
     marginTop: 6,
