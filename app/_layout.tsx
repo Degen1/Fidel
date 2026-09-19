@@ -29,7 +29,14 @@ export default function RootLayout() {
           animationMatchesGesture: true,
         }}
       >
-        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="(tabs)"
+          options={{
+            gestureEnabled: false,
+            fullScreenGestureEnabled: false,
+            animationMatchesGesture: false,
+          }}
+        />
         <Stack.Screen
           name="all-letters"
           options={{
