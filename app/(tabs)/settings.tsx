@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, View, Appearance } from 'react-native';
+import { StyleSheet, View, Appearance, RefreshControl, ScrollView } from 'react-native';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,7 @@ const THEME_MODES = ['light', 'system', 'dark'] as const;
 
 export default function SettingsScreen() {
   const [themeIndex, setThemeIndex] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleThemeChange = (index: number) => {
     setThemeIndex(index);
@@ -18,20 +19,38 @@ export default function SettingsScreen() {
     Appearance.setColorScheme(selectedMode === 'system' ? 'unspecified' : selectedMode);
   };
 
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 600);
+  };
+
   return (
     <ThemedView style={styles.safeArea}>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <ThemedText type="title">መማራጺ</ThemedText>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          alwaysBounceVertical
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#64748B"
+              colors={["#64748B"]}
+            />
+          }>
+          <ThemedText type="title">መማራጺ</ThemedText>
 
-        <View style={styles.section}>
-          <ThemedText style={styles.rowLabel}>ልጪ</ThemedText>
-          <SegmentedControl
-            values={THEME_OPTIONS}
-            selectedIndex={themeIndex}
-            onChange={(event) => handleThemeChange(event.nativeEvent.selectedSegmentIndex)}
-            style={styles.segmentedControl}
-          />
-        </View>
+          <View style={styles.section}>
+            <ThemedText style={styles.rowLabel}>ልጪ</ThemedText>
+            <SegmentedControl
+              values={THEME_OPTIONS}
+              selectedIndex={themeIndex}
+              onChange={(event) => handleThemeChange(event.nativeEvent.selectedSegmentIndex)}
+              style={styles.segmentedControl}
+            />
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -43,6 +62,9 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  content: {
+    flexGrow: 1,
     paddingTop: 24,
     paddingHorizontal: 20,
   },

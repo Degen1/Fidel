@@ -1,1 +1,5 @@
-export { default } from "./letter5";
+import { FirstGradeCourseScreen } from "@/components/first-grade-course-screen";
+
+export default function EnglishCourseScreen() {
+  return <FirstGradeCourseScreen courseKey="english" />;
+}

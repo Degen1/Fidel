@@ -1,8 +1,13 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  useState } from "react";
+import { Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 type RoundPrompt = "bigger" | "smaller";
 type Side = "left" | "right";
 type RoundState = {
@@ -68,6 +73,7 @@ const getCorrectSide = (roundState: RoundState): Side => {
 };
 
 export default function Game4Screen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
   const [round, setRound] = useState(1);
@@ -130,7 +136,7 @@ export default function Game4Screen() {
   const rightSize = SIZE_LEVELS[roundState.rightSizeIndex].diameter;
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg }]} edges={["top"]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]} edges={["left", "right"]}>
       <View style={styles.content}>
         <View style={[styles.headerCard, { backgroundColor: colors.panelBg, borderColor: colors.panelBorder }]}>
           <Text style={[styles.title, { color: colors.text }]}>ጸወታ ዓቐን ቅድመ-ኬ</Text>

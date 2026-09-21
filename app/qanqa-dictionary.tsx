@@ -1,20 +1,21 @@
-import React, { useMemo, useState } from "react";
+import React, { useDeferredValue, useMemo, useState } from "react";
 import {
   FlatList,
+  Platform,
+  RefreshControl,
+  StatusBar,
   StyleProp,
   StyleSheet,
-  Text,
-  TextInput,
   TextStyle,
   TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DICTIONARY_WORDS, DictionaryWord } from "@/constants/qanqa-dictionary-words";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text, AppTextInput as TextInput } from "@/components/app-text";
 const LIGHT = {
   background: "#ffffff",
   card: "#ffffff",
@@ -40,33 +41,49 @@ const DARK = {
 };
 
 export default function DictionaryScreen() {
+  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const palette = colorScheme === "dark" ? DARK : LIGHT;
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = deferredSearch.trim().toLocaleLowerCase();
     if (!query) {
-      return DICTIONARY_WORDS;
+      return DICTIONARY_WORDS.slice(0, 250);
     }
 
-    return DICTIONARY_WORDS.filter((word) =>
-      [
-        word.word,
-        ...word.definitions,
-        ...word.examples,
-        ...(word.synonyms ?? []),
-        ...(word.antonyms ?? []),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query)
-    );
-  }, [search]);
+    const ranked: DictionaryWord[][] = [[], [], [], [], [], []];
+    for (const entry of DICTIONARY_WORDS) {
+      const headword = entry.word.toLocaleLowerCase();
+      const relatedWords = [...(entry.synonyms ?? []), ...(entry.antonyms ?? [])].map((value) =>
+        value.toLocaleLowerCase()
+      );
+
+      let rank = Number.POSITIVE_INFINITY;
+      if (headword === query) rank = 0;
+      else if (headword.startsWith(query)) rank = 1;
+      else if (headword.includes(query)) rank = 2;
+      else if (relatedWords.some((value) => value === query)) rank = 3;
+      else if (relatedWords.some((value) => value.startsWith(query))) rank = 4;
+      else if (relatedWords.some((value) => value.includes(query))) rank = 5;
+
+      if (Number.isFinite(rank) && ranked[rank].length < 250) ranked[rank].push(entry);
+    }
+
+    return ranked.flat().slice(0, 250);
+  }, [deferredSearch]);
 
   const toggleOpen = (id: string) => {
     setOpenId((prev) => (prev === id ? null : id));
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setOpenId(null);
+    setTimeout(() => setRefreshing(false), 600);
   };
 
   const renderBullets = (
@@ -97,10 +114,18 @@ export default function DictionaryScreen() {
         </View>
 
         <Text style={[styles.dictLabel, { color: palette.textSecondary }]}>ትርጉም</Text>
-        {renderBullets(item.definitions, [styles.dictText, { color: palette.textPrimary }])}
+        {item.definitions.length > 0 ? (
+          renderBullets(item.definitions, [styles.dictText, { color: palette.textPrimary }])
+        ) : (
+          <Text style={[styles.dictText, { color: palette.textMuted }]}>ኣብ ምንጪ ኣይተረኽበን</Text>
+        )}
 
         <Text style={[styles.dictLabel, { marginTop: 8, color: palette.textSecondary }]}>ኣብነት</Text>
-        {renderBullets(item.examples, [styles.dictExample, { color: palette.textPrimary }])}
+        {item.examples.length > 0 ? (
+          renderBullets(item.examples, [styles.dictExample, { color: palette.textPrimary }])
+        ) : (
+          <Text style={[styles.dictText, { color: palette.textMuted }]}>ኣብ ምንጪ ኣይተረኽበን</Text>
+        )}
 
         {isOpen ? (
           <>
@@ -108,14 +133,14 @@ export default function DictionaryScreen() {
             {item.synonyms && item.synonyms.length > 0 ? (
               renderBullets(item.synonyms, [styles.dictText, { color: palette.textPrimary }])
             ) : (
-              <Text style={[styles.dictText, { color: palette.textMuted }]}>—</Text>
+              <Text style={[styles.dictText, { color: palette.textMuted }]}>ኣብ ምንጪ ኣይተረኽበን</Text>
             )}
 
             <Text style={[styles.dictLabel, { marginTop: 10, color: palette.textSecondary }]}>ተጻራሪ</Text>
             {item.antonyms && item.antonyms.length > 0 ? (
               renderBullets(item.antonyms, [styles.dictText, { color: palette.textPrimary }])
             ) : (
-              <Text style={[styles.dictText, { color: palette.textMuted }]}>—</Text>
+              <Text style={[styles.dictText, { color: palette.textMuted }]}>ኣብ ምንጪ ኣይተረኽበን</Text>
             )}
           </>
         ) : null}
@@ -128,14 +153,35 @@ export default function DictionaryScreen() {
       style={[styles.container, { backgroundColor: palette.background }]}
       edges={["left", "right"]}
     >
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar
+        animated
+        translucent
+        backgroundColor="transparent"
+        barStyle={colorScheme === "dark" ? "light-content" : "dark-content"}
+      />
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={7}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingTop: 14 + (Platform.OS === "android" ? insets.top : 0) },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={palette.textPrimary}
+            colors={[palette.textPrimary]}
+            progressBackgroundColor={palette.background}
+          />
+        }
         ListHeaderComponent={
           <View
             style={[
@@ -184,31 +230,34 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 20,
+    paddingTop: 14,
     paddingBottom: 18,
   },
   dictSearchRow: {
     flexDirection: "row",
     alignItems: "center",
-    height: 45,
+    minHeight: 56,
     borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 8,
+    borderRadius: 28,
+    borderCurve: "continuous",
+    paddingHorizontal: 10,
     paddingVertical: 0,
-    marginBottom: 10,
+    marginBottom: 14,
   },
   dictSearchInput: {
     flex: 1,
-    height: 45,
-    borderRadius: 20,
-    fontSize: 16,
-    paddingHorizontal: 12,
+    minHeight: 54,
+    borderRadius: 27,
+    borderCurve: "continuous",
+    fontSize: 17,
+    paddingHorizontal: 14,
     paddingVertical: 0,
     textAlignVertical: "center",
   },
   dictClearBtn: {
-    height: 35,
+    minHeight: 40,
     borderRadius: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     justifyContent: "center",
     alignItems: "center",
     marginLeft: 8,
@@ -250,7 +299,6 @@ const styles = StyleSheet.create({
   dictExample: {
     fontSize: 14,
     lineHeight: 20,
-    fontStyle: "italic",
   },
   bulletRow: {
     flexDirection: "row",

@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, PanResponder } from "react-native";
+import {
+  useEffect,
+  useMemo,
+  useState } from "react";
+import { View,
+  Pressable,
+  StyleSheet,
+  PanResponder,
+} from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 export type ColorItem = {
   label: string;
   value: string;

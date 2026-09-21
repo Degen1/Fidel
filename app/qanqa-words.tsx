@@ -1,12 +1,14 @@
-import React, { useState } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  MaterialIcons } from "@expo/vector-icons";
+import { useFocusEffect,
+  useRouter } from "expo-router";
 import {
   FlatList,
   LayoutChangeEvent,
+  RefreshControl,
   StyleProp,
   StyleSheet,
-  Text,
   TextStyle,
   TouchableOpacity,
   View,
@@ -17,6 +19,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { DICTIONARY_WORDS, DictionaryWord } from "@/constants/qanqa-dictionary-words";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 const LIGHT = {
   background: "#ffffff",
   title: "#101828",
@@ -33,15 +36,55 @@ const DARK = {
   section: "#cbd5e1",
 };
 
+type ReelOrder = { offset: number; step: number };
+
+const greatestCommonDivisor = (left: number, right: number) => {
+  while (right !== 0) {
+    [left, right] = [right, left % right];
+  }
+  return left;
+};
+
+const createRandomOrder = (length: number): ReelOrder => {
+  if (length <= 1) return { offset: 0, step: 1 };
+
+  let step = 1 + Math.floor(Math.random() * (length - 1));
+  while (greatestCommonDivisor(step, length) !== 1) {
+    step = step === length - 1 ? 1 : step + 1;
+  }
+  return { offset: Math.floor(Math.random() * length), step };
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const words = DICTIONARY_WORDS;
+  const listRef = useRef<FlatList<DictionaryWord>>(null);
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [listHeight, setListHeight] = useState(0);
+  const [reelOrder, setReelOrder] = useState(() => createRandomOrder(words.length));
+  const [refreshing, setRefreshing] = useState(false);
   const reelHeight = Math.max(listHeight || height, 1);
   const colorScheme = useColorScheme();
   const palette = colorScheme === "dark" ? DARK : LIGHT;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (words.length === 0) return;
+      setReelOrder(createRandomOrder(words.length));
+    }, [words.length])
+  );
+
+  useEffect(() => {
+    if (words.length === 0 || listHeight === 0) return;
+    const frame = requestAnimationFrame(() => {
+      listRef.current?.scrollToIndex({ index: 0, animated: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [listHeight, reelOrder, words.length]);
+
+  const wordAtReelIndex = (index: number) =>
+    words[(reelOrder.offset + index * reelOrder.step) % words.length];
 
   const onListLayout = (event: LayoutChangeEvent) => {
     const nextHeight = Math.round(event.nativeEvent.layout.height);
@@ -50,9 +93,15 @@ export default function HomeScreen() {
     }
   };
 
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setReelOrder(createRandomOrder(words.length));
+    setTimeout(() => setRefreshing(false), 600);
+  }, [words.length]);
+
   const renderLines = (values: string[] | undefined, style: StyleProp<TextStyle>) => {
     if (!values || values.length === 0) {
-      return <Text style={[styles.emptyText, { color: palette.muted }]}>—</Text>;
+      return <Text style={[styles.emptyText, { color: palette.muted }]}>ኣብ ምንጪ ኣይተረኽበን</Text>;
     }
 
     return values.map((value, idx) => (
@@ -62,7 +111,8 @@ export default function HomeScreen() {
     ));
   };
 
-  const renderReel = ({ item }: { item: DictionaryWord }) => {
+  const renderReel = ({ index }: { item: DictionaryWord; index: number }) => {
+    const item = wordAtReelIndex(index);
     return (
       <View style={[styles.reelPage, { height: reelHeight }]}>
         <View
@@ -93,14 +143,18 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: palette.section }]}>ተመሳሳሊ</Text>
             <Text style={[styles.text, { color: palette.text }]}>
-              {item.synonyms && item.synonyms.length > 0 ? item.synonyms.join(" • ") : "—"}
+              {item.synonyms && item.synonyms.length > 0
+                ? item.synonyms.join(" • ")
+                : "ኣብ ምንጪ ኣይተረኽበን"}
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={[styles.sectionLabel, { color: palette.section }]}>ተጻራሪ</Text>
             <Text style={[styles.text, { color: palette.text }]}>
-              {item.antonyms && item.antonyms.length > 0 ? item.antonyms.join(" • ") : "—"}
+              {item.antonyms && item.antonyms.length > 0
+                ? item.antonyms.join(" • ")
+                : "ኣብ ምንጪ ኣይተረኽበን"}
             </Text>
           </View>
         </View>
@@ -126,9 +180,11 @@ export default function HomeScreen() {
       </View>
       <View style={styles.listContainer} onLayout={onListLayout}>
         <FlatList
+          ref={listRef}
           data={words}
+          extraData={reelOrder}
           renderItem={renderReel}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(_, index) => wordAtReelIndex(index).id}
           pagingEnabled
           decelerationRate="fast"
           snapToInterval={reelHeight}
@@ -140,6 +196,16 @@ export default function HomeScreen() {
             offset: reelHeight * index,
             index,
           })}
+          initialScrollIndex={0}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={palette.title}
+              colors={[palette.title]}
+              progressBackgroundColor={palette.background}
+            />
+          }
           ListEmptyComponent={
             <View style={[styles.reelPage, { height: reelHeight }]}>
               <View
@@ -212,30 +278,37 @@ const styles = StyleSheet.create({
   },
   word: {
     fontSize: 34,
+    lineHeight: 48,
     fontWeight: "800",
-    marginBottom: 8,
+    includeFontPadding: true,
+    paddingBottom: 2,
+    marginBottom: 6,
   },
   section: {
     marginTop: 10,
   },
   sectionLabel: {
     fontSize: 12,
+    lineHeight: 18,
     fontWeight: "700",
+    includeFontPadding: true,
     marginBottom: 4,
   },
   text: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 25,
+    includeFontPadding: true,
     marginBottom: 3,
   },
   exampleText: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 25,
+    includeFontPadding: true,
     marginBottom: 3,
-    fontStyle: "italic",
   },
   emptyText: {
     fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 25,
+    includeFontPadding: true,
   },
 });

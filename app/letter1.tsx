@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
+import {
+  useEffect,
+  useRef,
+  useState } from "react";
+import { View,
+  StyleSheet,
+  PanResponder,
+  Pressable,
+} from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { TIGRINYA_LETTER_GROUPS } from "@/constants/tigrinya-alphabet";
@@ -8,6 +15,7 @@ import NumbersOne from "./numbers1";
 import NumbersTwo from "./numbers2";
 import NumbersThree from "./numbers3";
 
+import { AppText as Text } from "@/components/app-text";
 const LETTER_GROUPS = TIGRINYA_LETTER_GROUPS;
 const PATTERN_ITEMS = ["11", "12", "ሀሀ", "ሀ ሁ"];
 const SEGMENT_OPTIONS = ["letters", "numbers", "patterns"];

@@ -6,18 +6,18 @@ import {
   PanResponder,
   Platform,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { fetch } from "expo/fetch";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text, AppTextInput as TextInput } from "@/components/app-text";
 const LIGHT_THEME = {
   background: "#ffffff",
   surface: "#f8fafc",
@@ -210,6 +210,7 @@ DropdownSearch.displayName = "DropdownSearch";
 ------------------------------ */
 export default function ToolsScreen() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const palette = colorScheme === "dark" ? DARK_THEME : LIGHT_THEME;
 
   // Translator
@@ -217,6 +218,7 @@ export default function ToolsScreen() {
   const [translatorOutput, setTranslatorOutput] = useState("");
   const [translatorFrom, setTranslatorFrom] = useState("auto"); // ✅ default auto
   const [translatorTo, setTranslatorTo] = useState("en");
+  const [refreshing, setRefreshing] = useState(false);
   const [isHandwritingPadOpen, setIsHandwritingPadOpen] = useState(false);
   const [handwritingStrokes, setHandwritingStrokes] = useState([]);
   const [activeStroke, setActiveStroke] = useState([]);
@@ -416,6 +418,17 @@ export default function ToolsScreen() {
         "ምስ ኢንተርነት ተራኸቡ እሞ እንደገና ፈትኑ።"
       );
       console.error("Translation error:", error);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (translatorInput.trim()) {
+        await handleTranslate();
+      }
+    } finally {
+      requestAnimationFrame(() => setRefreshing(false));
     }
   };
 
@@ -627,14 +640,28 @@ export default function ToolsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: palette.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: palette.background }]}
+      edges={["left", "right"]}>
       <KeyboardAvoidingView
         style={styles.keyboardAvoiding}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 24}>
         <ScrollView
           style={styles.pageBody}
-          contentContainerStyle={styles.pageContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={palette.text}
+              colors={[palette.text]}
+              progressBackgroundColor={palette.background}
+            />
+          }
+          contentContainerStyle={[
+            styles.pageContent,
+            { paddingTop: 16 + (Platform.OS === "android" ? insets.top : 0) },
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.translatorContainer}>

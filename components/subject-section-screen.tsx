@@ -1,11 +1,21 @@
-import { useMemo } from "react";
-import { View, StyleSheet, Text, Pressable, ScrollView, useWindowDimensions } from "react-native";
+import {
+  useMemo,
+  useState } from "react";
+import { View,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+} from "react-native";
 import { Image } from "expo-image";
 import { useRouter, type Href } from "expo-router";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 export type SubjectSectionKey = "class" | "games" | "tests";
 
 const GRID_HORIZONTAL_PADDING = 16;
@@ -16,26 +26,26 @@ const MAX_CONTENT_WIDTH = 720;
 const APP_SECTIONS = {
   class: {
     apps: [
-      { name: "ፊደል", href: "/letters1?segment=letters", image: require("../assets/images/prek1.png") },
-      { name: "ቁጽሪ", href: "/letters1?segment=numbers", image: require("../assets/images/prek1.png") },
-      { name: "ምድጋም", href: "/letters1?segment=patterns", image: require("../assets/images/prek1.png") },
-      { name: "ሕብሪ", href: "/prek2?segment=colors", image: require("../assets/images/prek2.png") },
-      { name: "ቅርጺ", href: "/prek2?segment=shapes", image: require("../assets/images/prek2.png") },
-      { name: "ግዝፊ", href: "/prek2?segment=size", image: require("../assets/images/prek2.png") },
-      { name: "ቁጽሪ", href: "/letters1", image: require("../assets/images/first1.png") },
-      { name: "ትግሪኛ", href: "/letters2", image: require("../assets/images/first2.png") },
-      { name: "ኢንግሊሽ", href: "/letters6", image: require("../assets/images/first3.png") },
-      { name: "ስነ ፍልጠት", href: "/letters3", image: require("../assets/images/first4.png") },
+      { name: "ፊደል", href: "/letter1?segment=letters", image: require("../assets/images/cover-letters.png") },
+      { name: "ቁጽሪ", href: "/letter1?segment=numbers", image: require("../assets/images/cover-numbers-prek.png") },
+      { name: "ምድጋም", href: "/letter1?segment=patterns", image: require("../assets/images/cover-patterns.png") },
+      { name: "ሕብሪ", href: "/letter2?segment=colors", image: require("../assets/images/cover-colors.png") },
+      { name: "ቅርጺ", href: "/letter2?segment=shapes", image: require("../assets/images/cover-shapes.png") },
+      { name: "ግዝፊ", href: "/letter2?segment=size", image: require("../assets/images/cover-sizes.png") },
+      { name: "ቁጽሪ", href: "/letters1", image: require("../assets/images/cover-math.png") },
+      { name: "ትግሪኛ", href: "/letters2", image: require("../assets/images/cover-tigrinya.png") },
+      { name: "ኢንግሊሽ", href: "/letters6", image: require("../assets/images/cover-english.png") },
+      { name: "ስነ ፍልጠት", href: "/letters3", image: require("../assets/images/cover-science.png") },
     ],
   },
   games: {
     apps: [
-      { name: "ሕብሪ", href: "/game1", image: require("../assets/images/game1.png") },
-      { name: "ቁጽሪ", href: "/game2", image: require("../assets/images/game2.png") },
-      { name: "ቅርጺ", href: "/game3", image: require("../assets/images/game3.png") },
-      { name: "ግዝፊ", href: "/game4", image: require("../assets/images/game4.png") },
-      { name: "ሕቶ", href: "/game5", image: require("../assets/images/game5.png") },
-      { name: "ክንደይ", href: "/game6", image: require("../assets/images/game6.png") },
+      { name: "ሕብሪ", href: "/game1", image: require("../assets/images/game-cover-colors.png") },
+      { name: "ቁጽሪ", href: "/game2", image: require("../assets/images/game-cover-numbers.png") },
+      { name: "ቅርጺ", href: "/game3", image: require("../assets/images/game-cover-shapes.png") },
+      { name: "ግዝፊ", href: "/game4", image: require("../assets/images/game-cover-sizes.png") },
+      { name: "ሕቶ", href: "/game5", image: require("../assets/images/game-cover-quiz.png") },
+      { name: "ክንደይ", href: "/game6", image: require("../assets/images/game-cover-counting.png") },
     ],
   },
   tests: {
@@ -72,6 +82,7 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const isDark = colorScheme === "dark";
+  const [refreshing, setRefreshing] = useState(false);
 
   const backgroundColor = isDark ? "#0B1220" : "#F8FAFC";
   const cardColor = isDark ? "#1F2937" : "#E5E7EB";
@@ -99,6 +110,11 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
       firstGrade: selectedSection.apps,
     };
   }, [isClassSection, selectedSection.apps]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    requestAnimationFrame(() => setRefreshing(false));
+  };
 
   const renderAppCard = (app: AppItem, keyPrefix: string) => (
     <Pressable
@@ -197,14 +213,27 @@ export function SubjectSectionScreen({ sectionKey }: SubjectSectionScreenProps) 
   );
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor }]} edges={["top"]}>
+    <SafeAreaView style={[styles.root, { backgroundColor }]} edges={["left", "right"]}>
       <ScrollView
         style={styles.contentContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={textColor}
+            colors={[textColor]}
+            progressBackgroundColor={backgroundColor}
+          />
+        }
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[
           styles.contentContainerInner,
           isClassSection && styles.bookContent,
-          { paddingBottom: contentBottomPadding },
+          {
+            paddingTop:
+              (isClassSection ? 10 : 14) + (Platform.OS === "android" ? insets.top : 0),
+            paddingBottom: contentBottomPadding,
+          },
         ]}
         scrollIndicatorInsets={{ bottom: contentBottomPadding }}
         showsVerticalScrollIndicator={false}
