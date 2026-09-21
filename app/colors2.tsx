@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { View, Text, Pressable, StyleSheet, PanResponder } from "react-native";
+import {
+  useEffect,
+  useMemo,
+  useState } from "react";
+import { View,
+  Pressable,
+  StyleSheet,
+  PanResponder,
+} from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SIMPLE_COLORS, type ColorItem, type ColorsScreenProps } from "@/components/colors-screen";
 
+import { AppText as Text } from "@/components/app-text";
 const SWIPE_UP_THRESHOLD = -40;
 const SWIPE_DOWN_THRESHOLD = 40;
 

@@ -1,1 +1,5 @@
-export { default } from "./letter3";
+import { FirstGradeCourseScreen } from "@/components/first-grade-course-screen";
+
+export default function ScienceCourseScreen() {
+  return <FirstGradeCourseScreen courseKey="science" />;
+}

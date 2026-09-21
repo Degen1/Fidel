@@ -1,6 +1,11 @@
-import { useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import {
+  useState } from "react";
+import { View,
+  Pressable,
+  StyleSheet,
+} from "react-native";
 
+import { AppText as Text } from "@/components/app-text";
 export default function App() {
   const [step, setStep] = useState(0);
 

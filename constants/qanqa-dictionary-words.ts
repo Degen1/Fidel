@@ -1,4 +1,8 @@
 import { EXTRA_DICTIONARY_WORDS } from "./qanqa-dictionary-extra-words";
+import { MORE_DICTIONARY_WORDS } from "./qanqa-dictionary-more-words";
+import { THOUSAND_DICTIONARY_WORDS } from "./qanqa-dictionary-thousand-words";
+import { TEN_THOUSAND_DICTIONARY_WORDS } from "./qanqa-dictionary-10k-words";
+import { CORPUS_DICTIONARY_WORDS } from "./qanqa-dictionary-corpus-words";
 
 export type DictionaryWord = {
   id: string;
@@ -109,4 +113,8 @@ export const DICTIONARY_WORDS: DictionaryWord[] = [
     antonyms: [],
   },
   ...EXTRA_DICTIONARY_WORDS,
+  ...MORE_DICTIONARY_WORDS,
+  ...THOUSAND_DICTIONARY_WORDS,
+  ...TEN_THOUSAND_DICTIONARY_WORDS,
+  ...CORPUS_DICTIONARY_WORDS,
 ];

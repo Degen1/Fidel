@@ -1,10 +1,12 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { TIGRINYA_LETTER_GROUPS } from "@/constants/tigrinya-alphabet";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 export default function AllLettersScreen() {
+  const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === "dark";
   const backgroundColor = isDark ? "#0F172A" : "#F8FAFC";
   const cardColor = isDark ? "#1E293B" : "#FFFFFF";
@@ -13,7 +15,7 @@ export default function AllLettersScreen() {
   const accentColor = isDark ? "#38BDF8" : "#0284C7";
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={["top", "left", "right"]}>
+    <SafeAreaView style={[styles.container, { backgroundColor, paddingTop: insets.top }]} edges={["left", "right"]}>
       <ScrollView
         contentInsetAdjustmentBehavior="never"
         contentContainerStyle={styles.content}

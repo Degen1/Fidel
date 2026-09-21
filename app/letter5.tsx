@@ -1,7 +1,14 @@
-import { useRef, useState } from "react";
-import { View, Text, StyleSheet, PanResponder, Pressable } from "react-native";
+import {
+  useRef,
+  useState } from "react";
+import { View,
+  StyleSheet,
+  PanResponder,
+  Pressable,
+} from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 const LETTER_GROUPS = [
   ["ሀ", "ሁ", "ሂ", "ሃ", "ሄ", "ህ", "ሆ"],
   ["ለ", "ሉ", "ሊ", "ላ", "ሌ", "ል", "ሎ"],

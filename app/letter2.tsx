@@ -1,5 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, Pressable, PanResponder } from "react-native";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState } from "react";
+import { View,
+  StyleSheet,
+  Pressable,
+  PanResponder,
+} from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams } from "expo-router";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -8,6 +16,7 @@ import ColorsTwo from "./colors2";
 import ColorsThree from "./colors3";
 import { SIMPLE_COLORS, type ColorItem } from "@/components/colors-screen";
 
+import { AppText as Text } from "@/components/app-text";
 type SegmentKey = "colors" | "shapes" | "size";
 type NonColorSegmentKey = "shapes" | "size";
 export type Letter2Segment = SegmentKey;
@@ -105,7 +114,7 @@ const getSegmentIndexFromParam = (segment: string | string[] | undefined) => {
 };
 
 export default function Letter2Screen({
-  variant = "first-grade",
+  variant = "pre-k",
   segmentOverride,
   extraBottomInset = 0,
   onOverflowBack,

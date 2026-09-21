@@ -1,13 +1,15 @@
-import { StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 export default function OthersScreen() {
+  const insets = useSafeAreaInsets();
   const isDark = useColorScheme() === "dark";
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: isDark ? "#111827" : "#F3F4F6" }]} edges={["top"]}>
+    <SafeAreaView style={[styles.root, { backgroundColor: isDark ? "#111827" : "#F3F4F6", paddingTop: insets.top }]} edges={["left", "right"]}>
       <View style={styles.content}>
         <Text style={[styles.message, { color: isDark ? "#F9FAFB" : "#111827" }]}>coming soom</Text>
       </View>

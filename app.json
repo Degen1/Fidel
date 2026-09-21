@@ -2,7 +2,7 @@
   "expo": {
     "name": "Fidel",
     "slug": "fidel",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "fidel",
@@ -21,7 +21,12 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.degengebre.fidel"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "translucent": true
     },
     "web": {
       "output": "static",
@@ -41,7 +46,61 @@
           }
         }
       ],
-      "expo-font",
+      [
+        "expo-font",
+        {
+          "ios": {
+            "fonts": [
+              "./assets/fonts/AbyssinicaSIL-Regular.ttf"
+            ]
+          },
+          "android": {
+            "fonts": [
+              {
+                "fontFamily": "AbyssinicaSIL",
+                "fontDefinitions": [
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 100
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 200
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 300
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 400
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 500
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 600
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 700
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 800
+                  },
+                  {
+                    "path": "./assets/fonts/AbyssinicaSIL-Regular.ttf",
+                    "weight": 900
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
       "expo-image",
       "expo-status-bar",
       "expo-web-browser"

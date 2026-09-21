@@ -1,8 +1,13 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  useState } from "react";
+import { Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 
+import { AppText as Text } from "@/components/app-text";
 const NUMBERS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 const TOTAL_ROUNDS = 8;
 const LIGHT_COLORS = {
@@ -35,6 +40,7 @@ const getRandomNumberIndex = (excludeIndex?: number) => {
 };
 
 export default function Game2Screen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = colorScheme === "dark" ? DARK_COLORS : LIGHT_COLORS;
   const [round, setRound] = useState(1);
@@ -94,7 +100,7 @@ export default function Game2Screen() {
         : "ዝሰማማዕ ቁጽሪ ምረጽ።";
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg }]} edges={["top"]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg, paddingTop: insets.top }]} edges={["left", "right"]}>
       <View style={styles.content}>
         <View style={[styles.headerCard, { backgroundColor: colors.panelBg, borderColor: colors.panelBorder }]}>
           <Text style={[styles.title, { color: colors.text }]}>ጸወታ ቁጽሪ ቅድመ-ኬ</Text>
